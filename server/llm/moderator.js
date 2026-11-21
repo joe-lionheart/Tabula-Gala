@@ -58,7 +58,31 @@ export function mockModerator() {
       const pid = target?.playerId;
       const out = { narration: '', scene_signal: 'continue' };
 
-      if (!last || last.speakerId === 'unklar') {
+      const riddleOpen = (ctx.scene.riddles || []).find((r) => !(ctx.solvedRiddles || []).includes(r.id));
+      const chest = (ctx.scene.chests || []).find((c) => !(ctx.openedChests || []).includes(c.id));
+      const shopNpc = ctx.scene.shop?.npc;
+      if (last && last.speakerId !== 'unklar' && ctx.riddle) {
+        // Antwort auf das laufende Rätsel: der Server prüft gegen die Lösungswörter
+        out.riddle_answer = { player_id: pid, answer: text, rating: 'falsch' };
+        out.narration = `Hm, ${name}. Mal sehen, ob das stimmt.`;
+      } else if (last && riddleOpen && has(text, /rätsel|frage|stell uns|wir hören/)) {
+        out.riddle_start = riddleOpen.id;
+        out.narration = 'Es wird still. Alle Augen richten sich auf euch.';
+      } else if (last && chest && has(text, /truhe|kiste|öffne|aufmach|deckel/)) {
+        const hasKey = chest.lock?.key && Object.values(ctx.inventories || {}).some((inv) => inv.items.some((i) => i.itemId === chest.lock.key));
+        if (chest.lock && !hasKey) {
+          out.narration = `Verschlossen, ${name}. Aber das Schloss ist alt.`;
+          out.check = { player_id: pid, stat: chest.lock.stat, dc: chest.lock.dc, reason: chest.lock.text || 'Truhe aufbekommen',
+            on_success: 'Es knackt. Der Deckel springt auf.', on_fail: 'Das Schloss hält. Noch.', open_chest_on_success: chest.id };
+        } else {
+          out.narration = `Der Deckel knarrt, ${name}. Schaut auf eure Handys.`;
+          out.open_chest = chest.id;
+        }
+      } else if (last && shopNpc && has(text, /preis|billiger|rabatt|handel|verhandel|kauf|angebot/)) {
+        const s2 = { begruendung: has(text, /weil|denn|damit/) ? 2 : 0, bezug: has(text, /du |dein|ihr |euer|dir /) ? 1 : 0, ton: has(text, /bitte|danke|ehre|meister/) ? 2 : 1 };
+        out.argument = { player_id: pid, npc: shopNpc, ...s2, comment: 'Übungsmodus: Schlüsselwörter' };
+        out.narration = 'Die Nebenfigur wiegt den Kopf und überlegt.';
+      } else if (!last || last.speakerId === 'unklar') {
         out.narration = 'Das habe ich gehört, aber nicht, wer es war. Wer von euch spricht da?';
         out.ask_speaker = true;
       } else if (has(text, /wirtshaus|taverne|kneipe|schenke|gasthaus/)) {

@@ -12,6 +12,7 @@ let attackTarget = null;
 let attackWeapon = null;
 let busy = false;            // Doppeltipp-Schutz beim Würfeln
 let lastCheckId = null;
+const seenLoot = new Set();     // um neuen Loot kurz aufleuchten zu lassen
 
 // ---------- Signal: Vibration, Ton (iPhone kann nicht vibrieren), Aufleuchten ----------
 let actx = null;
@@ -20,9 +21,9 @@ const unlockTone = () => {
 };
 document.addEventListener('pointerdown', unlockTone, { passive: true });
 function signal(kind = 'check') {
-  if (navigator.vibrate) navigator.vibrate(kind === 'combat' ? [200, 80, 200, 80, 200] : [120, 60, 120]);
+  if (navigator.vibrate) navigator.vibrate(kind === 'combat' ? [200, 80, 200, 80, 200] : kind === 'loot' ? [60, 40, 60] : [120, 60, 120]);
   if (actx && actx.state === 'running') {
-    const notes = kind === 'combat' ? [330, 247] : [660, 880];
+    const notes = kind === 'combat' ? [330, 247] : kind === 'loot' ? [988, 1319, 1568] : [660, 880];
     notes.forEach((f, i) => {
       const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + i * 0.13;
       o.frequency.value = f; o.type = 'sine';
@@ -165,7 +166,8 @@ function charCard() {
     <div class="row" style="justify-content:space-between"><b>${esc(c.name)}</b><small class="muted">${esc(c.concept)}</small></div>
     <div class="lp" style="margin:.4rem 0"><i style="width:${(100 * c.lp) / c.lpMax}%"></i></div>
     <div class="row"><span class="pill ${c.down ? 'off' : ''}">${c.down ? 'AM BODEN' : `${c.lp} / ${c.lpMax} LP`}</span>
-      ${state.stats.map((st) => `<span class="pill">${st.label.slice(0, 3)} ${c.stats[st.key]}</span>`).join('')}</div>
+      ${state.stats.map((st) => `<span class="pill">${st.label.slice(0, 3)} ${c.stats[st.key]}</span>`).join('')}
+      ${state.silver !== null && state.silver !== undefined ? `<span class="pill gold">${state.silver} Silber</span>` : ''}</div>
     ${c.conditions.length ? `<small style="color:var(--red)">${c.conditions.map((x) => esc(x.label)).join(', ')}</small>` : ''}
   </section>`;
 }
@@ -200,8 +202,22 @@ function renderPlay() {
         ${diceHtml('attack')}` : ''}
     </section>` : ''}
 
-    ${s.loot.length ? `<section class="card"><h3>Hier liegt</h3>
-      ${s.loot.map((l) => `<div class="row" style="margin-bottom:.3rem"><span class="grow">${esc(l.name)}${l.qty > 1 ? ` ×${l.qty}` : ''}</span><button data-take="${l.lootId}">Nehmen</button></div>`).join('')}</section>` : ''}
+    ${s.riddle ? `<section class="card riddle">
+      <h3>Rätsel</h3>
+      <p class="q">${esc(s.riddle.question)}</p>
+      <p class="muted">Antwortet laut. Fehlversuche: ${s.riddle.attempts} von ${s.riddle.maxAttempts}. Jeder kostet 5 Minuten.</p>
+    </section>` : ''}
+
+    ${s.loot.length ? `<section class="card loot ${s.loot.some((l) => !seenLoot.has(l.lootId)) ? 'fresh' : ''}"><h3>Hier liegt – wer zuerst tippt</h3>
+      ${s.loot.map((l) => `<div class="row" style="margin-bottom:.35rem"><span class="grow">${esc(l.name)}${l.qty > 1 ? ` ×${l.qty}` : ''}</span><button class="primary" data-take="${l.lootId}">Nehmen</button></div>`).join('')}</section>` : ''}
+
+    ${s.shop ? `<section class="card">
+      <h3>${esc(s.shop.npcName)} verkauft</h3>
+      ${s.shop.deal ? `<p class="pill ${s.shop.deal.tier === 'abgelehnt' ? 'off' : 'on'}">${esc(s.shop.deal.label)}${s.shop.deal.discount ? ` · −${Math.round(s.shop.deal.discount * 100)} %` : ''}</p>` : '<p class="muted">Verhandeln lohnt sich: einfach mit der Figur reden.</p>'}
+      ${s.shop.items.map((i) => `<div class="row" style="margin-bottom:.3rem"><span class="grow">${esc(i.name)}</span>
+        <span class="${i.price !== null && i.price < i.list ? 'pill on' : 'muted'}">${i.price === null ? '–' : `${i.price} Silber`}${i.price !== null && i.price < i.list ? ` <s>${i.list}</s>` : ''}</span>
+        <button data-buy="${i.itemId}" ${i.price === null || i.price > (s.silver ?? 0) ? 'disabled' : ''}>Kaufen</button></div>`).join('')}
+    </section>` : ''}
 
     <section class="card">
       <h3>Rucksack</h3>
@@ -222,7 +238,8 @@ function renderPlay() {
 
   app.onclick = async (e) => {
     const d = e.target.dataset;
-    if (d.take) return act('take', { lootId: d.take });
+    if (d.take) { const r = await act('take', { lootId: d.take }); if (r.ok) toast('Deins!'); return; }
+    if (d.buy) { const r = await act('buy', { itemId: d.buy }); if (r.ok) toast('Gekauft.'); return; }
     if (d.target) { attackTarget = d.target; attackWeapon = attackWeapon ?? weapons[0]?.uid ?? ''; return render(); }
     if (d.die) {
       const natural = d.die === 'auto' ? undefined : Number(d.die);
@@ -239,6 +256,7 @@ function renderPlay() {
   // Neue Probe: nach oben scrollen, damit niemand sie unter dem Rucksack sucht
   if (myCheck && myCheck.id !== lastCheckId) window.scrollTo({ top: 0, behavior: 'smooth' });
   lastCheckId = myCheck?.id ?? null;
+  s.loot.forEach((l) => seenLoot.add(l.lootId));
 }
 
 function diceHtml(mode) {

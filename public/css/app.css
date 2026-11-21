@@ -91,3 +91,8 @@ input, select, textarea { background: #0c111b; border: 1px solid var(--line); bo
 body.flash { animation: flash .9s ease-out; }
 @keyframes flash { 0% { background: #4a3a14; } 100% { background: var(--bg); } }
 #netbanner { position: fixed; top: 0; left: 0; right: 0; z-index: 10; background: var(--red); color: #fff; text-align: center; padding: .6rem; font-weight: 600; cursor: pointer; }
+
+.riddle { border-color: var(--blue); }
+.riddle .q { font-family: Georgia, serif; font-size: 1.15rem; line-height: 1.45; }
+.loot.fresh { border: 2px solid var(--gold); animation: pulse 1.2s 3; }
+.loot button.primary { min-width: 6.5rem; }

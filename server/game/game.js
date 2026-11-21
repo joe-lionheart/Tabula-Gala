@@ -9,6 +9,7 @@ import { STATS, STAT_LABELS } from '../engine/rules.js';
 import * as sound from '../audio/director.js';
 import { validateJudgment } from '../llm/contract.js';
 import { systemPrompt, contextMessage } from '../llm/prompt.js';
+import { RIDDLE, rateAnswer, scoreArgument, priceFor, ARGUMENT_LABELS } from '../engine/social.js';
 
 const SPEAKER_WINDOW_MS = 12000;   // so lange gilt ein Antippen „Ich spreche“
 const QUIET_MS = 1400;             // Pause, nach der der Moderator antwortet
@@ -48,6 +49,11 @@ export class Game {
       activeSpeaker: null,        // {playerId, until}
       ai: { enabled: true, kind: moderator.kind, model: moderator.model, busy: false, tokensIn: 0, tokensOut: 0, calls: 0, lastLatencyMs: null, lastError: null },
       milestonesOpen: [],
+      riddle: null,               // {id, sceneId, attempts, hintGiven}
+      solvedRiddles: [],          // Rätsel-IDs
+      deals: {},                  // `${playerId}:${npc}` -> Ergebnis der Argumentationsprobe (gilt pro Szene)
+      openedChests: [],           // Truhen-IDs
+      penaltyMin: 0,              // Zeit, die falsche Rätselantworten gekostet haben
     };
     this.quietTimer = null;
     this.actTimer = null;
@@ -108,6 +114,7 @@ export class Game {
   }
 
   minutes(since) { return since ? Math.floor((Date.now() - since) / 60000) : 0; }
+  get elapsedMin() { return this.minutes(this.state.startedAt) + (this.state.penaltyMin || 0); }
 
   // ---------- Lobby & Figuren ----------
   join(name) {
@@ -150,6 +157,7 @@ export class Game {
     this.state.inventories[ch.id] = inv;
     const choice = this.world.startKitChoices[Number(kit)] || this.world.startKitChoices[0];
     for (const id of [...choice, 'heiltrank']) this.giveItem(ch, id, 1);
+    if (this.world.startSilver && this.itemDef('silberbeutel')) this.giveItem(ch, 'silberbeutel', this.world.startSilver);
     this.log('character', { playerId, character: ch, late });
     if (late) {
       this.say(`Die Tür geht auf. ${ch.name} stößt zu euch${ch.concept ? `: ${ch.concept}` : ''}.`);
@@ -183,6 +191,8 @@ export class Game {
     this.state.sceneStartedAt = Date.now();
     this.state.combat = null;
     this.state.pendingCheck = null;
+    this.state.riddle = null;
+    this.state.deals = {};
     this.buildLoot(s.loot);
     // Zustände ticken beim Szenenwechsel
     if (prev) for (const ch of this.characters) {
@@ -359,8 +369,13 @@ export class Game {
       inFight: Boolean(this.state.combat),
       transcript: this.transcriptText(),
       lastUtterance: [...this.state.transcript].reverse().find((u) => u.source !== 'moderator'),
-      minutesLeft: Math.max(0, this.state.durationMin - this.minutes(this.state.startedAt)),
+      minutesLeft: Math.max(0, this.state.durationMin - this.elapsedMin),
       path: this.state.path,
+      riddle: this.activeRiddle(),
+      solvedRiddles: this.state.solvedRiddles,
+      deals: this.state.deals,
+      openedChests: this.state.openedChests,
+      silver: Object.fromEntries(this.characters.map((c) => [c.playerId, this.silverOf(c)])),
       sceneMinutes: this.minutes(this.state.sceneStartedAt),
       beds: sound.allBeds(),
       sfx: [...new Set([...(scene.allowedSfx || []), 'door_creak', 'coins', 'magic', 'bell'])],
@@ -393,6 +408,10 @@ export class Game {
     if (j.narration) this.say(j.narration);
     for (const l of j.npc_lines) this.say(l.text, { voice: `npc:${l.npc}`, who: l.npc });
     if (j.reveal_loot.length) this.revealLoot(j.reveal_loot);
+    if (j.open_chest) this.openChest(j.open_chest);
+    if (j.riddle_answer) this.answerRiddle(j.riddle_answer);
+    if (j.riddle_start) this.startRiddle(j.riddle_start);
+    if (j.argument) this.argue(j.argument);
     if (j.event) this.applyEvent(j.event);
     if (j.combat?.start?.length && !this.state.combat) this.startCombat(j.combat.start);
     if (j.combat?.end && this.state.combat) this.endCombat('Der Kampf ist vorbei.');
@@ -440,6 +459,8 @@ export class Game {
       this.say(pc.on_success);
       if (result.outcome === 'strong' || result.outcome === 'crit') this.say(pc.on_strong);
       if (pc.reveal_on_success?.length) this.revealLoot(pc.reveal_on_success);
+      if (pc.open_chest_on_success) this.openChest(pc.open_chest_on_success, playerId);
+      if (pc.riddle_id) this.solveRiddle(playerId, 'nachgedacht');
       if (result.outcome === 'price') { const lp = payPrice(ch); this.feed('Tisch', `Erfolg mit Preis: ${ch.name} −5 LP`, 'system'); if (lp.wentDown) this.cue(sound.downCue()); }
     } else {
       this.say(pc.on_fail);
@@ -465,10 +486,6 @@ export class Game {
   }
 
   endCombat(text) {
-    const enemies = this.state.combat?.enemies || [];
-    for (const e of enemies) if (e.defeated && e.loot) {
-      for (const entry of this.world.lootTables[e.loot] || []) this.addLoot(entry.item, entry.qty, false);
-    }
     this.state.combat = null;
     this.cue(sound.combatEndCue(this.scene));
     this.say(text);
@@ -493,6 +510,7 @@ export class Game {
     this.log('attack', { playerId, enemy: enemy.instanceId, weapon, result });
     this.feed('Würfel', `${ch.name} → ${enemy.name}: ${result.check.natural} + ${result.check.statValue} = ${result.check.total} gegen ${enemy.abwehr} → ${result.check.label}`, 'roll');
     this.say(this.combatLine(ch, enemy, weapon, result));
+    if (result.enemyDefeated) this.dropLoot(enemy);
     if (combat.enemies.every((e) => e.defeated)) {
       setTimeout(() => { if (this.state.combat === combat) this.endCombat('Stille. Nur noch euer Atem. Der Kampf ist vorbei.'); }, 1800);
     }
@@ -517,7 +535,7 @@ export class Game {
   takeLoot(playerId, lootId) {
     const ch = this.charOf(playerId);
     const idx = this.state.loot.findIndex((l) => l.lootId === lootId);
-    if (!ch || idx < 0) return { ok: false, error: 'Nicht mehr da' };
+    if (!ch || idx < 0) return { ok: false, error: 'Zu spät, schon weg.' };
     const l = this.state.loot[idx];
     const r = this.giveItem(ch, l.itemId, l.qty);
     if (!r.ok) return r;
@@ -584,6 +602,161 @@ export class Game {
     return { ok: true };
   }
 
+  // ---------- Loot: Drops und Truhen. Alle sehen alles, schnellster Finger mit Platz gewinnt ----------
+  dropLoot(enemy) {
+    const table = enemy.loot ? this.world.lootTables[enemy.loot] || [] : [];
+    if (!table.length) return;
+    for (const entry of table) this.addLoot(entry.item, entry.qty, false);
+    const names = table.map((e) => this.itemDef(e.item)?.name).filter(Boolean).join(', ');
+    this.feed('Tisch', `${enemy.name} lässt fallen: ${names}. Wer zuerst tippt, hat es.`, 'system');
+    this.cue({ reason: 'Drop', sfx: [{ id: 'loot_pickup', delayMs: 900 }] });
+    this.emit({ type: 'buzz', all: true, kind: 'loot' });
+  }
+
+  chestDef(id) { return (this.scene?.chests || []).find((c) => c.id === id); }
+
+  openChest(id, playerId) {
+    const chest = this.chestDef(id);
+    if (!chest || this.state.openedChests.includes(id)) return { ok: false, error: 'Keine solche Truhe' };
+    this.state.openedChests.push(id);
+    const table = this.world.lootTables[chest.loot] || [];
+    for (const entry of table) this.addLoot(entry.item, entry.qty, false);
+    const who = this.charOf(playerId)?.name;
+    const names = table.map((e) => `${this.itemDef(e.item)?.name}${e.qty > 1 ? ` ×${e.qty}` : ''}`).join(', ');
+    this.feed('Tisch', `${who ? `${who} öffnet` : 'Offen'}: ${chest.label}. Darin: ${names || 'nichts'}. Wer zuerst tippt, hat es.`, 'system');
+    this.cue({ reason: 'Truhe', sfx: [{ id: 'wood_creak', delayMs: 0 }, { id: table.some((e) => this.itemDef(e.item)?.value) ? 'coins' : 'loot_pickup', delayMs: 700 }] });
+    this.emit({ type: 'buzz', all: true, kind: 'loot' });
+    this.log('chest', { id, playerId, items: table });
+    this.changed();
+    return { ok: true };
+  }
+
+  // ---------- Rätsel (Kernmechanik §3: falsch kostet Zeit, nicht LP) ----------
+  riddleDef(id) { return (this.scene?.riddles || []).find((r) => r.id === id); }
+  activeRiddle() {
+    const r = this.state.riddle;
+    const def = r && this.riddleDef(r.id);
+    return def ? { ...def, attempts: r.attempts, hintGiven: r.hintGiven } : null;
+  }
+
+  startRiddle(id) {
+    const def = this.riddleDef(id);
+    if (!def || this.state.solvedRiddles.includes(id)) return { ok: false, error: 'Kein solches Rätsel' };
+    this.state.riddle = { id, sceneId: this.scene.id, attempts: 0, hintGiven: false };
+    const npc = (this.scene.npcs || []).find((n) => n.id === def.npc);
+    this.say(def.question, npc ? { voice: `npc:${npc.id}`, who: npc.name } : {});
+    this.cue({ reason: 'Rätsel', sfx: [{ id: 'magic', delayMs: 0 }] });
+    this.log('riddle_start', { id });
+    this.changed();
+    return { ok: true };
+  }
+
+  answerRiddle({ player_id, answer, rating }) {
+    const r = this.state.riddle;
+    const def = r && this.riddleDef(r.id);
+    const ch = this.charOf(player_id);
+    if (!def || !ch) return { ok: false };
+    const verdict = rateAnswer(def, answer, rating);
+    this.log('riddle_answer', { id: def.id, playerId: player_id, answer, llmRating: rating, verdict });
+    if (verdict === 'richtig') return this.solveRiddle(player_id, 'gelöst');
+    if (verdict === 'nah') {
+      // Nah dran: mit Verstand nachbessern (Würfel), statt einfach „falsch“
+      this.feed('Tisch', `${ch.name} ist nah dran. Verstand-Probe zum Nachbessern.`, 'system');
+      return this.requestCheck({
+        player_id, stat: def.stat || 'verstand', dc: def.dc || RIDDLE.defaultDc,
+        reason: 'Nah dran: den Gedanken zu Ende denken', riddle_id: def.id,
+        on_success: def.solvedText || 'Der Groschen fällt. Das ist die Lösung.',
+        on_fail: 'Der Gedanke entgleitet dir wieder. Versucht es weiter.',
+      });
+    }
+    r.attempts += 1;
+    this.state.penaltyMin += RIDDLE.wrongPenaltyMin;
+    this.feed('Tisch', `Falsch. Das kostet ${RIDDLE.wrongPenaltyMin} Minuten.`, 'system');
+    this.cue({ reason: 'Rätsel falsch', sfx: [{ id: 'fail_low', delayMs: 0 }] });
+    if (r.attempts >= RIDDLE.maxAttempts) {
+      this.state.riddle = null;
+      this.say(def.failText || 'Die Antwort bleibt im Dunkeln. Ihr müsst einen anderen Weg finden.');
+    } else if (r.attempts >= RIDDLE.hintAfter && !r.hintGiven && def.hint) {
+      r.hintGiven = true;
+      this.say(`Ein Hinweis: ${def.hint}`);
+    }
+    this.changed();
+    return { ok: true, verdict };
+  }
+
+  solveRiddle(playerId, how) {
+    const r = this.state.riddle;
+    const def = r && this.riddleDef(r.id);
+    if (!def) return { ok: false };
+    this.state.riddle = null;
+    this.state.solvedRiddles.push(def.id);
+    const ch = this.charOf(playerId);
+    if (how === 'gelöst') this.say(def.solvedText || 'Richtig.');
+    this.feed('Tisch', `Rätsel ${how}${ch ? ` von ${ch.name}` : ''}.`, 'system');
+    this.cue({ reason: 'Rätsel gelöst', sfx: [{ id: 'success_chime', delayMs: 0 }] });
+    if (def.reward?.reveal?.length) this.revealLoot(def.reward.reveal);
+    if (def.reward?.chest) this.openChest(def.reward.chest, playerId);
+    this.state.transcript.push({ ts: Date.now(), speakerId: 'system', speakerName: 'Tisch', text: `Rätsel gelöst: ${def.id}`, source: 'system' });
+    this.log('riddle_solved', { id: def.id, playerId, how });
+    this.changed();
+    return { ok: true, verdict: 'richtig' };
+  }
+
+  // ---------- Verhandeln und Kaufen ----------
+  silverOf(ch) {
+    return (this.state.inventories[ch.id]?.items || []).filter((i) => i.itemId === 'silberbeutel').reduce((a, i) => a + i.qty, 0);
+  }
+
+  argue({ player_id, npc, comment, ...scores }) {
+    const ch = this.charOf(player_id);
+    if (!ch) return { ok: false };
+    const res = scoreArgument(scores, ch.stats.wort);
+    this.state.deals[`${player_id}:${npc}`] = { npc, ...res };
+    const parts = Object.entries(res.parts).map(([k, v]) => `${ARGUMENT_LABELS[k]} ${v}`).join(', ');
+    this.feed('Würfel', `${ch.name} verhandelt: ${parts}${res.bonus ? ', Wort +1' : ''} = ${res.points} → ${res.label}${res.discount ? ` (−${Math.round(res.discount * 100)} %)` : ''}`, 'roll');
+    this.cue({ reason: 'Verhandlung', sfx: [{ id: res.tier === 'abgelehnt' ? 'fail_low' : 'success_chime', delayMs: 0 }] });
+    this.log('argument', { playerId: player_id, npc, scores, result: res, comment });
+    this.changed();
+    return { ok: true, result: res };
+  }
+
+  shopView(playerId) {
+    const shop = this.scene?.shop;
+    if (!shop) return null;
+    const deal = playerId ? this.state.deals[`${playerId}:${shop.npc}`] : null;
+    const npc = (this.scene.npcs || []).find((n) => n.id === shop.npc);
+    return {
+      npc: shop.npc, npcName: npc?.name || shop.npc,
+      deal: deal ? { tier: deal.tier, label: deal.label, discount: deal.discount } : null,
+      items: shop.items.map((e) => ({ itemId: e.item, name: this.itemDef(e.item)?.name || e.item, list: e.price, price: priceFor(e.price, deal) })),
+    };
+  }
+
+  buy(playerId, itemId) {
+    const ch = this.charOf(playerId);
+    const shop = this.shopView(playerId);
+    const offer = shop?.items.find((i) => i.itemId === itemId);
+    if (!ch || !offer) return { ok: false, error: 'Gibt es hier nicht' };
+    if (offer.price === null) return { ok: false, error: `${shop.npcName} will dir heute nichts verkaufen.` };
+    if (this.silverOf(ch) < offer.price) return { ok: false, error: `Zu wenig Silber (${this.silverOf(ch)} von ${offer.price})` };
+    const added = this.giveItem(ch, itemId, 1);
+    if (!added.ok) return { ok: false, error: 'Kein Platz im Rucksack' };
+    let rest = offer.price;
+    const inv = this.state.inventories[ch.id];
+    for (const pile of inv.items.filter((i) => i.itemId === 'silberbeutel')) {
+      if (!rest) break;
+      const take = Math.min(rest, pile.qty);
+      removeItem(inv, pile.uid, take);
+      rest -= take;
+    }
+    this.feed('Tisch', `${ch.name} kauft ${offer.name} für ${offer.price} Silber.`, 'system');
+    this.cue({ reason: 'Kauf', sfx: [{ id: 'coins', delayMs: 0 }] });
+    this.log('buy', { playerId, itemId, price: offer.price, list: offer.list });
+    this.state.transcript.push({ ts: Date.now(), speakerId: playerId, speakerName: ch.name, text: `(kauft ${offer.name} für ${offer.price} Silber)`, source: 'system' });
+    this.changed();
+    return { ok: true };
+  }
+
   // ---------- Host-Eingriffe ----------
   hostSfx(id) { this.cue({ reason: 'Host', sfx: [{ id, delayMs: 0 }] }); return { ok: true }; }
   hostBed(id) { this.cue({ reason: 'Host', sfx: [], bed: id }); return { ok: true }; }
@@ -598,7 +771,7 @@ export class Game {
     return {
       code: this.code,
       phase: s.phase, paused: s.paused,
-      clock: { durationMin: s.durationMin, elapsedMin: this.minutes(s.startedAt), sceneMin: this.minutes(s.sceneStartedAt) },
+      clock: { durationMin: s.durationMin, elapsedMin: this.elapsedMin, sceneMin: this.minutes(s.sceneStartedAt), penaltyMin: s.penaltyMin || 0 },
       world: { name: this.world.name, title: this.world.adventure.title, pitch: this.world.adventure.pitch },
       scene: scene ? {
         id: scene.id, title: scene.title, act: scene.act, budgetMin: scene.budgetMin, ambience: scene.ambience,
@@ -615,6 +788,14 @@ export class Game {
         stat: s.pendingCheck.stat, statLabel: s.pendingCheck.statLabel, reason: s.pendingCheck.reason,
         ...(isHost || s.pendingCheck.player_id === viewer ? { dc: s.pendingCheck.dc, statValue: s.pendingCheck.statValue } : {}),
       } : null,
+      riddle: (() => {
+        const r = this.activeRiddle();
+        if (!r) return null;
+        return { id: r.id, question: r.question, attempts: r.attempts, maxAttempts: RIDDLE.maxAttempts, ...(isHost ? { answers: r.answers, hint: r.hint } : {}) };
+      })(),
+      shop: s.phase === 'playing' ? this.shopView(isHost ? null : viewer) : null,
+      silver: me ? this.silverOf(me) : null,
+      chests: isHost && scene ? (scene.chests || []).map((c) => ({ id: c.id, label: c.label, opened: s.openedChests.includes(c.id) })) : undefined,
       activeSpeaker: s.activeSpeaker && s.activeSpeaker.until > Date.now() ? s.activeSpeaker.playerId : null,
       feed: s.feed.slice(-30),
       milestoneOpen: !isHost && s.milestonesOpen.includes(viewer),

@@ -4,9 +4,11 @@
   "adventure": {
     "id": "nachtstueck-1",
     "title": "Nachtstück 1: Das Licht im Moor",
-    "pitch": "Im Wirtshaus „Zum Krummen Kessel“ am Rand des Moors ist die Tochter des Wirts verschwunden. Seit drei Nächten tanzt draußen ein Licht über dem Wasser.",
+    "pitch": "Im Wirtshaus „Zum Krummen Kessel“ am Rand des Moors ist die Tochter des Wirts verschwunden. Seit drei Nächten tanzt draußen ein Licht über dem Wasser, und das Moor steigt.",
     "tone": "warm, schaurig, mit Humor; Hörspiel, nicht Regelwerk",
-    "durationMin": 90
+    "durationMin": 150,
+    "lesson": "Verschwiegene Schuld steigt wie Moorwasser. Erst wer zurückgibt, was er genommen hat, wird frei, und wer liebt, lässt frei.",
+    "structure": "Aristotelisch: Anfang (Akt I: Auftrag, Schmiede, Moorpfad), Mitte (Akt II: Wendepunkt in der Kapelle, Erkenntnis auf der Weideninsel), Ende (Akt III: Lösung im Morgengrauen)."
   },
   "scenes": [
     {
@@ -15,98 +17,457 @@
       "title": "Zum Krummen Kessel",
       "ambience": "tavern",
       "intro": "Regen trommelt gegen die Butzenscheiben. Im „Krummen Kessel“ riecht es nach Rauch, nassem Wollzeug und Bier. Am Kamin sitzt Wirt Bertold und starrt ins Feuer. Seine Tochter Lene ist seit drei Tagen fort, und draußen über dem Moor tanzt nachts ein Licht.",
-      "anchors": ["der große Kamin mit dem Kesselhaken", "die Fässerreihe hinter dem Tresen", "der Händler Quast in der Ecke, der zu viel Silber zählt"],
+      "anchors": [
+        "der große Kamin mit dem Kesselhaken",
+        "die Fässerreihe hinter dem Tresen",
+        "der Händler Quast in der Ecke, der zu viel Silber zählt"
+      ],
       "npcs": [
-        { "id": "bertold", "name": "Wirt Bertold", "voice": "tief, müde, brummig", "wants": "seine Tochter zurück", "secret": "er hat Lene verboten, den Händlerssohn zu sehen" },
-        { "id": "quast", "name": "Händler Quast", "voice": "schnell, schmeichelnd", "wants": "dass niemand ins Moor geht", "secret": "er bezahlt die Räuber im Moor für Schutz und Schweigen" }
+        {
+          "id": "bertold",
+          "name": "Wirt Bertold",
+          "voice": "tief, müde, brummig",
+          "wants": "seine Tochter zurück",
+          "secret": "er hat Lene verboten, den Händlerssohn zu sehen"
+        },
+        {
+          "id": "quast",
+          "name": "Händler Quast",
+          "voice": "schnell, schmeichelnd",
+          "wants": "dass niemand ins Moor geht",
+          "secret": "er bezahlt die Räuber im Moor für Schutz und Schweigen"
+        }
       ],
       "exits": [
-        { "id": "exit_1", "label": "Der Spur ins Moor folgen", "to": "s2-moorpfad" },
-        { "id": "exit_2", "label": "Quast unter Druck setzen und die Wahrheit erfahren", "to": "s2-moorpfad" },
-        { "id": "exit_3", "label": "Den Keller durchsuchen: Lenes Versteck", "to": "s2-moorpfad" }
+        {"id": "exit_1", "label": "Zur Schmiede am Dorfrand, dem letzten Haus vor dem Moor", "to": "s2-schmiede"},
+        {"id": "exit_2", "label": "Quast unter Druck setzen und die Wahrheit erfahren", "to": "s2-schmiede"},
+        {"id": "exit_3", "label": "Den Keller durchsuchen: Lenes Versteck", "to": "s2-schmiede"}
       ],
       "abortSignal": "Nach 25 Minuten drängt Bertold: „Geht jetzt, bevor das Licht erlischt.“",
-      "budgetMin": 25,
+      "budgetMin": 20,
       "enemies": ["wegelagerer"],
       "loot": "wirtshaus",
-      "allowedSfx": ["door_creak", "coins", "glass_clink", "chair_scrape", "laugh_crowd"]
+      "allowedSfx": ["door_creak", "coins", "glass_clink", "chair_scrape", "laugh_crowd"],
+      "arc": "exposition"
     },
     {
-      "id": "s2-moorpfad",
+      "id": "s2-schmiede",
+      "act": 1,
+      "arc": "steigerung",
+      "title": "Grimbarts Schmiede",
+      "ambience": "smithy",
+      "budgetMin": 15,
+      "intro": "Am letzten Haus vor dem Moor glüht noch die Esse. Schmied Grimbart, breit wie ein Tor, legt den Hammer nicht aus der Hand, als ihr eintretet. Über seiner Tür ist ein Rätsel ins Holz gebrannt, und darunter hängt ein Schild: „Wer es löst, kriegt die Kiste.“",
+      "anchors": ["die glühende Esse mit dem Blasebalg", "das Rätsel über der Tür", "die verschlossene Eichenkiste neben dem Amboss"],
+      "npcs": [
+        {
+          "id": "grimbart",
+          "name": "Schmied Grimbart",
+          "voice": "tief, langsam, wortkarg, ehrlich",
+          "wants": "ehrliche Arbeit und dass endlich jemand Quast die Stirn bietet",
+          "secret": "er hat vor zwanzig Jahren den silbernen Klöppel der Kapellenglocke geschmiedet; der verschwand in dem Jahr, als Quast reich wurde"
+        }
+      ],
+      "shop": {
+        "npc": "grimbart",
+        "items": [
+          {"item": "kurzschwert", "price": 3},
+          {"item": "streitkolben", "price": 3},
+          {"item": "kurzbogen", "price": 3},
+          {"item": "lederpanzer", "price": 4},
+          {"item": "heiltrank", "price": 1},
+          {"item": "verband", "price": 1},
+          {"item": "laterne", "price": 1},
+          {"item": "seil", "price": 1}
+        ]
+      },
+      "riddles": [
+        {
+          "id": "glocke",
+          "npc": "grimbart",
+          "when": "wenn jemand das Rätsel über der Tür liest oder danach fragt",
+          "question": "Ich habe einen Bauch und esse nie. Ich habe eine Zunge und rede nie. Schlägt man mich, so singe ich. Was bin ich?",
+          "answers": ["glocke", "glocken", "kirchenglocke"],
+          "near": ["kirchturm", "turm", "horn", "trommel", "kessel", "schelle", "gong"],
+          "hint": "Sie hängt in jeder Kapelle, und ihre Zunge heißt Klöppel.",
+          "stat": "verstand",
+          "dc": 13,
+          "solvedText": "Grimbart lässt den Hammer sinken. „Glocke. Richtig. Und ihre Zunge, den Klöppel, den hab ich geschmiedet. Aus Silber. Für die Kapelle im Moor.“ Er stößt die Kiste mit dem Fuß auf.",
+          "reward": {"chest": "grimbarts_kiste"}
+        }
+      ],
+      "chests": [
+        {
+          "id": "grimbarts_kiste",
+          "label": "Grimbarts Eichenkiste",
+          "loot": "schmiede_kiste",
+          "lock": {"stat": "kraft", "dc": 16, "text": "Das Schloss ist Grimbarts Arbeit."}
+        }
+      ],
+      "exits": [
+        {"id": "exit_1", "label": "In der Dämmerung ins Moor aufbrechen", "to": "s3-moorpfad"},
+        {"id": "exit_2", "label": "Grimbart als Führer bis zum Bohlenweg gewinnen", "to": "s3-moorpfad"},
+        {"id": "exit_3", "label": "Grimbarts Geschichte vom Silberklöppel hören, dann los", "to": "s3-moorpfad"}
+      ],
+      "abortSignal": "Grimbart löscht die Esse. „Ich mach zu. Wenn ihr das Mädchen wollt, geht jetzt.“",
+      "enemies": [],
+      "loot": "schmiede",
+      "allowedSfx": ["anvil", "coins", "door_creak", "chair_scrape"]
+    },
+    {
+      "id": "s3-moorpfad",
       "act": 1,
       "title": "Der Moorpfad",
       "ambience": "swamp_night",
       "intro": "Der Bohlenweg knarrt unter euren Stiefeln. Nebel kriecht über das schwarze Wasser, Frösche verstummen, wenn ihr näher kommt. Weit vorn schwebt das Licht, mal blau, mal grün.",
-      "anchors": ["ein halb versunkener Karren mit zerrissener Plane", "morsche Bohlen, unter denen es gluckert", "ein abgebrochener Wegweiser mit frischen Kratzspuren"],
+      "anchors": [
+        "ein halb versunkener Karren mit zerrissener Plane",
+        "morsche Bohlen, unter denen es gluckert",
+        "ein abgebrochener Wegweiser mit frischen Kratzspuren"
+      ],
       "npcs": [
-        { "id": "irrlicht", "name": "Das Irrlicht", "voice": "flüsternd, kichernd, kindlich", "wants": "Wanderer vom Weg locken", "secret": "es gehorcht der Kapelle, nicht den Räubern" }
+        {
+          "id": "irrlicht",
+          "name": "Das Irrlicht",
+          "voice": "flüsternd, kichernd, kindlich",
+          "wants": "Wanderer vom Weg locken",
+          "secret": "es gehorcht der Kapelle, nicht den Räubern"
+        }
       ],
       "exits": [
-        { "id": "exit_1", "label": "Dem Licht folgen", "to": "s3-kapelle" },
-        { "id": "exit_2", "label": "Den Spuren der Räuber folgen", "to": "s3-kapelle" },
-        { "id": "exit_3", "label": "Einen gefangenen Räuber ausfragen", "to": "s3-kapelle" }
+        {"id": "exit_1", "label": "Dem Licht folgen", "to": "s4-kapelle"},
+        {"id": "exit_2", "label": "Den Spuren der Räuber folgen", "to": "s4-kapelle"},
+        {"id": "exit_3", "label": "Einen gefangenen Räuber ausfragen", "to": "s4-kapelle"}
       ],
       "abortSignal": "Die Bohlen hinter euch versinken. Es gibt nur noch einen Weg: nach vorn zur Kapelle.",
-      "budgetMin": 30,
+      "budgetMin": 25,
       "enemies": ["moorwolf", "wegelagerer"],
-      "traps": [{ "id": "morsche_bohle", "class": "U", "severity": "leicht", "avoid": "agilitaet", "dc": 12, "spot": "wahrnehmung" }],
+      "traps": [{"id": "morsche_bohle", "class": "U", "severity": "leicht", "avoid": "agilitaet", "dc": 12, "spot": "wahrnehmung"}],
       "loot": "moor",
-      "allowedSfx": ["wolf_howl", "water_splash", "wood_creak", "whisper", "trap_click"]
+      "allowedSfx": ["wolf_howl", "water_splash", "wood_creak", "whisper", "trap_click"],
+      "arc": "steigerung",
+      "chests": [
+        {
+          "id": "karrenkiste",
+          "label": "Kiste im versunkenen Karren",
+          "loot": "karren",
+          "lock": {"stat": "kraft", "dc": 13, "text": "Die Kiste steckt im Schlamm fest."}
+        }
+      ],
+      "pathNotes": {
+        "s2-schmiede:exit_2": "Grimbart hat sie bis zum Bohlenweg gebracht und ist umgekehrt; er hat gesagt: „Folgt nicht dem Licht. Folgt dem Wasser.“",
+        "s2-schmiede:exit_3": "Die Runde weiß vom silbernen Klöppel der Kapellenglocke, der vor zwanzig Jahren verschwand."
+      }
     },
     {
-      "id": "s3-kapelle",
-      "act": 1,
+      "id": "s4-kapelle",
+      "act": 2,
       "title": "Die versunkene Kapelle",
       "ambience": "chapel",
       "intro": "Aus dem Moor ragt eine Kapelle, halb im Wasser, das Dach eingesunken. Drinnen flackern Fackeln. Ihr hört Stimmen, und eine davon ist jung und trotzig: Lene.",
-      "anchors": ["die schiefe Glocke, die noch an einem Seil hängt", "die Fackeln entlang der überfluteten Bänke", "der Altar, auf dem Quasts Silber in Säcken liegt"],
+      "anchors": [
+        "die schiefe Glocke, die noch an einem Seil hängt",
+        "die Fackeln entlang der überfluteten Bänke",
+        "der Altar, auf dem Quasts Silber in Säcken liegt"
+      ],
       "npcs": [
-        { "id": "rotbart", "name": "Hauptmann Rotbart", "voice": "laut, gutmütig-gefährlich", "wants": "sein Silber und seine Ruhe", "secret": "er hält Lene nicht gefangen" },
-        { "id": "lene", "name": "Lene", "voice": "jung, trotzig, klug", "wants": "frei entscheiden, wen sie liebt", "secret": "sie ist freiwillig hier, mit Quasts Sohn, der von seinem Vater fliehen will" }
+        {
+          "id": "rotbart",
+          "name": "Hauptmann Rotbart",
+          "voice": "laut, gutmütig-gefährlich",
+          "wants": "sein Silber und seine Ruhe",
+          "secret": "er hält Lene nicht gefangen"
+        },
+        {
+          "id": "lene",
+          "name": "Lene",
+          "voice": "jung, trotzig, klug",
+          "wants": "frei entscheiden, wen sie liebt",
+          "secret": "sie ist freiwillig hier, mit Quasts Sohn, der von seinem Vater fliehen will"
+        },
+        {
+          "id": "jorin",
+          "name": "Jorin",
+          "voice": "jung, nervös, ehrlich, stockt, wenn er lügt",
+          "wants": "mit Lene fort, weg von seinem Vater",
+          "secret": "in der Kiste seines Vaters liegt etwas Silbernes, das er nie anfassen durfte; den Schlüssel trägt er heimlich bei sich"
+        }
       ],
       "peripetie": "Lene wurde nicht entführt. Sie ist mit Quasts Sohn geflohen, und Quast bezahlt die Räuber, damit sie die beiden finden, nicht verstecken. Wem helft ihr jetzt?",
       "exits": [
-        { "id": "exit_1", "label": "Lene nach Hause bringen", "to": null },
-        { "id": "exit_2", "label": "Den beiden zur Flucht verhelfen", "to": null },
-        { "id": "exit_3", "label": "Quast vor dem ganzen Dorf entlarven", "to": null }
+        {"id": "exit_1", "label": "Lene nach Hause bringen", "to": "s5-weideninsel"},
+        {"id": "exit_2", "label": "Lene und Jorin zur Flucht verhelfen", "to": "s5-weideninsel"},
+        {"id": "exit_3", "label": "Mit Quasts Brief als Beweis zum Dorf, um ihn zu entlarven", "to": "s5-weideninsel"}
       ],
-      "abortSignal": "Die Glocke läutet von selbst. Das Moor steigt. Entscheidet euch jetzt.",
-      "budgetMin": 30,
+      "abortSignal": "Die Glocke läutet von selbst, ein hohles, falsches Läuten ohne Klöppel. Das Wasser steigt über die Bänke. Ihr müsst hier raus.",
+      "budgetMin": 25,
       "enemies": ["wegelagerer", "rotbart", "irrlicht"],
       "loot": "kapelle",
-      "allowedSfx": ["bell", "torch", "water_splash", "door_creak", "crowd_gasp"]
+      "allowedSfx": ["bell", "torch", "water_splash", "door_creak", "crowd_gasp"],
+      "arc": "peripetie",
+      "chests": [{"id": "opferstock", "label": "Der alte Opferstock neben dem Altar", "loot": "opferstock"}],
+      "pathNotes": {"s3-moorpfad:exit_3": "Ein gefangener Räuber hat verraten, dass Quast für die Suche bezahlt, nicht fürs Verstecken."}
+    },
+    {
+      "id": "s5-weideninsel",
+      "act": 2,
+      "arc": "erkenntnis",
+      "title": "Die Weideninsel",
+      "ambience": "swamp_night",
+      "budgetMin": 25,
+      "intro": "Das Wasser treibt euch aus der Kapelle. Das Irrlicht schwebt voraus, und diesmal folgt ihr ihm. Auf einer Insel steht eine Weide, so alt, dass ihre Äste ins Wasser hängen wie Haare. In ihrem hohlen Stamm brennen Lichter in Gläsern. Eine Stimme knarrt wie nasses Holz: „Endlich. Ihr habt lange gebraucht.“",
+      "anchors": [
+        "die Lichter in Gläsern im hohlen Weidenstamm",
+        "die Trittsteine, die eins nach dem anderen versinken",
+        "ein Kahn, an einem morschen Seil vertäut"
+      ],
+      "npcs": [
+        {
+          "id": "muhme",
+          "name": "Die Weidenmuhme",
+          "voice": "uralt, knarrend wie Holz, langsam, mit trockenem Humor",
+          "wants": "dass der silberne Klöppel vor Sonnenaufgang ins Moor zurückkehrt",
+          "secret": "das Moor steigt, seit der Klöppel fehlt; sie hält es nur noch bis zum Morgen. Zwei Männer haben ihn damals gestohlen, nicht einer"
+        },
+        {
+          "id": "jorin",
+          "name": "Jorin",
+          "voice": "jung, nervös, ehrlich",
+          "wants": "Lene beschützen",
+          "secret": "er trägt den Schlüssel zur eisernen Kiste seines Vaters"
+        }
+      ],
+      "riddles": [
+        {
+          "id": "loch",
+          "npc": "muhme",
+          "when": "bevor sie irgendetwas verrät; sie verlangt es als Preis für die Wahrheit",
+          "question": "Erst die Antwort, dann die Wahrheit. Je mehr man davon wegnimmt, desto größer wird es. Was ist das?",
+          "answers": ["loch", "ein loch", "grube", "graben"],
+          "near": ["höhle", "leere", "nichts", "schuld", "grab", "mulde", "spalt"],
+          "hint": "Denkt an einen Spaten. Und an das, was einer aus meiner Glocke genommen hat.",
+          "stat": "verstand",
+          "dc": 13,
+          "solvedText": "Die Muhme lacht, es klingt wie brechende Äste. „Ein Loch. So eins hat Quast ins Moor gerissen, als er den Klöppel nahm. Er und noch einer. Bringt ihn zurück, bevor die Sonne aufgeht, oder das Wasser holt sich euer Dorf.“",
+          "reward": {"reveal": ["weidenzweig"]}
+        }
+      ],
+      "chests": [],
+      "exits": [
+        {"id": "exit_1", "label": "Den Pakt mit der Muhme schließen: der Klöppel bis Sonnenaufgang", "to": "s6-morgengrauen"},
+        {"id": "exit_2", "label": "Mit dem Kahn heimlich zurück ins Dorf", "to": "s6-morgengrauen"},
+        {"id": "exit_3", "label": "Jorin gewinnen: er öffnet die Kiste seines Vaters", "to": "s6-morgengrauen"}
+      ],
+      "abortSignal": "Der letzte Trittstein versinkt. Nur noch der Kahn trägt euch. Im Osten wird der Himmel grau.",
+      "enemies": ["schlickgaenger", "irrlicht"],
+      "loot": "weideninsel",
+      "allowedSfx": ["water_splash", "wood_creak", "whisper", "magic", "bell"],
+      "pathNotes": {
+        "s4-kapelle:exit_1": "Lene ist bei euch, widerwillig; Jorin folgt heimlich im Nebel und taucht hier auf.",
+        "s4-kapelle:exit_2": "Lene und Jorin sind bei euch; Rotbarts Leute suchen sie im Moor.",
+        "s4-kapelle:exit_3": "Ihr habt Quasts Brief; Lene und Jorin vertrauen euch. Rotbart hat sich abgesetzt."
+      }
+    },
+    {
+      "id": "s6-morgengrauen",
+      "act": 3,
+      "arc": "loesung",
+      "title": "Glocke im Morgengrauen",
+      "ambience": "dawn_yard",
+      "budgetMin": 30,
+      "intro": "Grau kriecht der Morgen über das Moor. Das Wasser steht schon an den Türschwellen des „Krummen Kessels“, das halbe Dorf hat sich in die Gaststube geflüchtet. Im Hof lädt Händler Quast eine eiserne Kiste auf seinen Wagen, zwei bezahlte Männer an seiner Seite. Wirt Bertold steht in der Tür und sieht weg.",
+      "anchors": ["Quasts Wagen mit der eisernen Kiste", "Bertolds alter Kesselhaken über der Tür", "der Steg, der ins steigende Wasser führt"],
+      "npcs": [
+        {
+          "id": "quast",
+          "name": "Händler Quast",
+          "voice": "schnell, schmeichelnd, wird schrill unter Druck",
+          "wants": "mit seiner Kiste fort, bevor jemand fragt",
+          "secret": "er war es nicht allein: Bertold hat damals die Kapellentür aufgebrochen"
+        },
+        {
+          "id": "bertold",
+          "name": "Wirt Bertold",
+          "voice": "tief, müde, brüchig",
+          "wants": "seine Tochter und seine Ruhe",
+          "secret": "mit seinem Anteil am Silber hat er den Krummen Kessel gekauft; darum hat er Lene verboten, Jorin zu sehen: aus Angst, dass alles herauskommt"
+        },
+        {
+          "id": "lene",
+          "name": "Lene",
+          "voice": "jung, trotzig, klug",
+          "wants": "frei entscheiden",
+          "secret": "sie ahnt, dass ihr Vater etwas verbirgt"
+        }
+      ],
+      "peripetie": "Erkenntnis: Bertold war damals dabei. Mit seinem Anteil hat er den Krummen Kessel gekauft. Wer den Klöppel zurückgibt, bringt auch Bertolds Schuld ans Licht.",
+      "chests": [
+        {
+          "id": "quasts_kiste",
+          "label": "Quasts eiserne Kiste auf dem Wagen",
+          "loot": "quasts_kiste",
+          "lock": {"stat": "agilitaet", "dc": 15, "text": "Ein schweres Schloss; Jorins Schlüssel würde passen.", "key": "jorins_schluessel"}
+        }
+      ],
+      "exits": [
+        {
+          "id": "exit_1",
+          "label": "Den Klöppel dem Moor zurückgeben",
+          "to": null,
+          "outro": "Ihr werft den silbernen Klöppel vom Steg ins Wasser. Für einen Atemzug geschieht nichts. Dann läutet draußen im Moor die Glocke, diesmal richtig, und das Wasser beginnt zu sinken. Bertold setzt sich auf die Schwelle und weint, und Lene setzt sich daneben."
+        },
+        {
+          "id": "exit_2",
+          "label": "Quast und Bertold vor dem Dorf gestehen lassen",
+          "to": null,
+          "outro": "Vor allen sagt Bertold, was er zwanzig Jahre lang verschwiegen hat. Quast schweigt, aber das Dorf hat gehört genug. Als der Klöppel zurück im Moor ist, sinkt das Wasser, und im Krummen Kessel ist es so still wie nie. Dann schenkt Bertold allen ein, zum ersten Mal ohne etwas zu verbergen."
+        },
+        {
+          "id": "exit_3",
+          "label": "Lene und Jorin bringen den Klöppel selbst zur Kapelle",
+          "to": null,
+          "outro": "Lene und Jorin rudern den Klöppel zur Kapelle, und ihr seht vom Ufer, wie sie ihn einhängen. Die Glocke schlägt. Das Moor atmet aus. Bertold sieht dem Kahn lange nach und sagt dann nur: „Geh. Du hast recht.“"
+        }
+      ],
+      "abortSignal": "Die Sonne berührt den Horizont. Das Wasser steht an der Tür. Jetzt oder nie.",
+      "enemies": ["soeldner", "quast"],
+      "loot": "morgengrauen",
+      "allowedSfx": ["door_creak", "crowd_gasp", "coins", "bell", "water_splash", "chair_scrape"],
+      "pathNotes": {
+        "s5-weideninsel:exit_1": "Die Runde hat den Pakt mit der Muhme geschlossen; sie spüren, wie das Moor ihnen folgt und wartet.",
+        "s5-weideninsel:exit_2": "Die Runde kommt heimlich mit dem Kahn; Quast hat sie noch nicht bemerkt.",
+        "s5-weideninsel:exit_3": "Jorin ist auf eurer Seite und hat den Schlüssel zur Kiste seines Vaters dabei.",
+        "s4-kapelle:exit_3": "Die Runde trägt Quasts Brief als Beweis bei sich.",
+        "s4-kapelle:exit_1": "Lene ist bei euch und will ihrem Vater nicht in die Augen sehen."
+      }
     }
   ],
   "enemies": [
-    { "id": "wegelagerer", "name": "Wegelagerer", "stufe": 1, "kompl": ["ruft Hilfe", "wirft Sand in die Augen"], "loot": "strassenraub", "sound": "enemy_grunt" },
-    { "id": "moorwolf", "name": "Moorwolf", "stufe": 1, "lp": 22, "kompl": ["reißt an der Ausrüstung", "zweiter Wolf heult in der Nähe"], "loot": null, "sound": "wolf_growl" },
-    { "id": "irrlicht", "name": "Irrlicht", "stufe": 2, "abwehr": 14, "lp": 30, "kompl": ["blendet: nächster Wurf −2", "lockt eine Figur vom Weg"], "loot": "irrlicht", "sound": "magic" },
-    { "id": "rotbart", "name": "Hauptmann Rotbart", "stufe": 2, "kompl": ["tritt den Tisch um", "pfeift seine Leute herbei"], "loot": "rotbart", "sound": "enemy_shout" }
+    {
+      "id": "wegelagerer",
+      "name": "Wegelagerer",
+      "stufe": 1,
+      "kompl": ["ruft Hilfe", "wirft Sand in die Augen"],
+      "loot": "strassenraub",
+      "sound": "enemy_grunt"
+    },
+    {
+      "id": "moorwolf",
+      "name": "Moorwolf",
+      "stufe": 1,
+      "lp": 22,
+      "kompl": ["reißt an der Ausrüstung", "zweiter Wolf heult in der Nähe"],
+      "loot": null,
+      "sound": "wolf_growl"
+    },
+    {
+      "id": "irrlicht",
+      "name": "Irrlicht",
+      "stufe": 2,
+      "abwehr": 14,
+      "lp": 30,
+      "kompl": ["blendet: nächster Wurf −2", "lockt eine Figur vom Weg"],
+      "loot": "irrlicht",
+      "sound": "magic"
+    },
+    {
+      "id": "rotbart",
+      "name": "Hauptmann Rotbart",
+      "stufe": 2,
+      "kompl": ["tritt den Tisch um", "pfeift seine Leute herbei"],
+      "loot": "rotbart",
+      "sound": "enemy_shout"
+    },
+    {
+      "id": "schlickgaenger",
+      "name": "Schlickgänger",
+      "stufe": 2,
+      "kompl": ["zieht dich ins Wasser", "Schlamm in den Augen: nächster Wurf −2"],
+      "loot": "schlick",
+      "sound": "water_splash"
+    },
+    {
+      "id": "soeldner",
+      "name": "Quasts Söldner",
+      "stufe": 1,
+      "kompl": ["stellt sich in den Weg", "ruft nach Quast"],
+      "loot": "soeldner",
+      "sound": "enemy_grunt"
+    },
+    {
+      "id": "quast",
+      "name": "Händler Quast",
+      "stufe": 1,
+      "abwehr": 10,
+      "lp": 20,
+      "kompl": ["wirft Silber, um abzulenken", "schreit nach dem Dorf"],
+      "loot": "quast",
+      "sound": "enemy_shout"
+    }
   ],
   "items": [
-    { "id": "kurzschwert", "name": "Kurzschwert", "w": 1, "h": 2, "weapon": { "damage": "1W8+1", "kind": "klinge", "stat": "kraft" } },
-    { "id": "streitkolben", "name": "Streitkolben", "w": 1, "h": 2, "weapon": { "damage": "1W8+2", "kind": "stumpf", "stat": "kraft" } },
-    { "id": "dolch", "name": "Dolch", "w": 1, "h": 1, "weapon": { "damage": "1W6+1", "kind": "klinge", "stat": "agilitaet" } },
-    { "id": "kurzbogen", "name": "Kurzbogen", "w": 1, "h": 3, "weapon": { "damage": "1W8", "kind": "bogen", "stat": "agilitaet" } },
-    { "id": "knueppel", "name": "Knüppel", "w": 1, "h": 2, "weapon": { "damage": "1W6+2", "kind": "stumpf", "stat": "kraft" } },
-    { "id": "heiltrank", "name": "Heiltrank", "w": 1, "h": 1, "stack": true, "use": { "heal": 20 } },
-    { "id": "verband", "name": "Verband", "w": 1, "h": 1, "stack": true, "use": { "heal": 10, "cures": "Blutung" } },
-    { "id": "laterne", "name": "Laterne", "w": 1, "h": 1, "effect": "Licht im Nebel: Wahrnehmung im Moor DC −2" },
-    { "id": "seil", "name": "Seil (10 m)", "w": 2, "h": 1, "effect": "Klettern und Retten aus dem Moor DC −2" },
-    { "id": "silberbeutel", "name": "Silberbeutel", "w": 1, "h": 1, "stack": true, "value": 10 },
-    { "id": "quasts_brief", "name": "Quasts Brief", "w": 1, "h": 1, "effect": "Beweis: Quast bezahlt die Räuber" },
-    { "id": "lenes_band", "name": "Lenes Haarband", "w": 1, "h": 1, "effect": "Spur: Lene ging freiwillig" },
-    { "id": "irrlichtglas", "name": "Irrlicht im Glas", "w": 1, "h": 1, "effect": "einmal: eine Szene lang Licht ohne Laterne" },
-    { "id": "rotbarts_horn", "name": "Rotbarts Horn", "w": 2, "h": 1, "effect": "ruft die Räuber; sie gehorchen einmal" },
-    { "id": "lederpanzer", "name": "Lederpanzer", "w": 2, "h": 2, "effect": "Klasse K leicht: −2 Schaden" }
+    {"id": "kurzschwert", "name": "Kurzschwert", "w": 1, "h": 2, "weapon": {"damage": "1W8+1", "kind": "klinge", "stat": "kraft"}},
+    {"id": "streitkolben", "name": "Streitkolben", "w": 1, "h": 2, "weapon": {"damage": "1W8+2", "kind": "stumpf", "stat": "kraft"}},
+    {"id": "dolch", "name": "Dolch", "w": 1, "h": 1, "weapon": {"damage": "1W6+1", "kind": "klinge", "stat": "agilitaet"}},
+    {"id": "kurzbogen", "name": "Kurzbogen", "w": 1, "h": 3, "weapon": {"damage": "1W8", "kind": "bogen", "stat": "agilitaet"}},
+    {"id": "knueppel", "name": "Knüppel", "w": 1, "h": 2, "weapon": {"damage": "1W6+2", "kind": "stumpf", "stat": "kraft"}},
+    {"id": "heiltrank", "name": "Heiltrank", "w": 1, "h": 1, "stack": true, "use": {"heal": 20}},
+    {"id": "verband", "name": "Verband", "w": 1, "h": 1, "stack": true, "use": {"heal": 10, "cures": "Blutung"}},
+    {"id": "laterne", "name": "Laterne", "w": 1, "h": 1, "effect": "Licht im Nebel: Wahrnehmung im Moor DC −2"},
+    {"id": "seil", "name": "Seil (10 m)", "w": 2, "h": 1, "effect": "Klettern und Retten aus dem Moor DC −2"},
+    {"id": "silberbeutel", "name": "Silberbeutel", "w": 1, "h": 1, "stack": true, "value": 10},
+    {"id": "quasts_brief", "name": "Quasts Brief", "w": 1, "h": 1, "effect": "Beweis: Quast bezahlt die Räuber"},
+    {"id": "lenes_band", "name": "Lenes Haarband", "w": 1, "h": 1, "effect": "Spur: Lene ging freiwillig"},
+    {"id": "irrlichtglas", "name": "Irrlicht im Glas", "w": 1, "h": 1, "effect": "einmal: eine Szene lang Licht ohne Laterne"},
+    {"id": "rotbarts_horn", "name": "Rotbarts Horn", "w": 2, "h": 1, "effect": "ruft die Räuber; sie gehorchen einmal"},
+    {"id": "lederpanzer", "name": "Lederpanzer", "w": 2, "h": 2, "effect": "Klasse K leicht: −2 Schaden"},
+    {
+      "id": "silberkloeppel",
+      "name": "Silberner Klöppel",
+      "w": 1,
+      "h": 2,
+      "effect": "die Zunge der Kapellenglocke; zurück ins Moor, und das Wasser sinkt"
+    },
+    {"id": "jorins_schluessel", "name": "Jorins Schlüssel", "w": 1, "h": 1, "effect": "öffnet Quasts eiserne Kiste ohne Probe"},
+    {
+      "id": "weidenzweig",
+      "name": "Weidenzweig der Muhme",
+      "w": 1,
+      "h": 2,
+      "effect": "einmal: Schlickgänger weichen zurück; im Wasser Agilität DC −2"
+    }
   ],
   "lootTables": {
-    "wirtshaus": [{ "item": "laterne", "qty": 1 }, { "item": "seil", "qty": 1 }, { "item": "heiltrank", "qty": 2 }, { "item": "quasts_brief", "qty": 1, "hidden": true }],
-    "moor": [{ "item": "verband", "qty": 2 }, { "item": "kurzbogen", "qty": 1 }, { "item": "lenes_band", "qty": 1, "hidden": true }, { "item": "silberbeutel", "qty": 1 }],
-    "kapelle": [{ "item": "silberbeutel", "qty": 3 }, { "item": "heiltrank", "qty": 1 }, { "item": "lederpanzer", "qty": 1 }],
-    "strassenraub": [{ "item": "dolch", "qty": 1 }, { "item": "silberbeutel", "qty": 1 }],
-    "irrlicht": [{ "item": "irrlichtglas", "qty": 1 }],
-    "rotbart": [{ "item": "rotbarts_horn", "qty": 1 }, { "item": "silberbeutel", "qty": 2 }]
+    "wirtshaus": [
+      {"item": "laterne", "qty": 1},
+      {"item": "seil", "qty": 1},
+      {"item": "heiltrank", "qty": 2},
+      {"item": "quasts_brief", "qty": 1, "hidden": true}
+    ],
+    "moor": [
+      {"item": "verband", "qty": 2},
+      {"item": "kurzbogen", "qty": 1},
+      {"item": "lenes_band", "qty": 1, "hidden": true},
+      {"item": "silberbeutel", "qty": 1}
+    ],
+    "kapelle": [{"item": "silberbeutel", "qty": 3}, {"item": "heiltrank", "qty": 1}, {"item": "lederpanzer", "qty": 1}],
+    "strassenraub": [{"item": "dolch", "qty": 1}, {"item": "silberbeutel", "qty": 1}],
+    "irrlicht": [{"item": "irrlichtglas", "qty": 1}],
+    "rotbart": [{"item": "rotbarts_horn", "qty": 1}, {"item": "silberbeutel", "qty": 2}],
+    "schmiede": [{"item": "verband", "qty": 1}],
+    "schmiede_kiste": [{"item": "heiltrank", "qty": 1}, {"item": "silberbeutel", "qty": 2}, {"item": "lederpanzer", "qty": 1}],
+    "karren": [{"item": "heiltrank", "qty": 1}, {"item": "silberbeutel", "qty": 2}, {"item": "seil", "qty": 1}],
+    "opferstock": [{"item": "silberbeutel", "qty": 1}, {"item": "verband", "qty": 1}],
+    "weideninsel": [
+      {"item": "verband", "qty": 1},
+      {"item": "weidenzweig", "qty": 1, "hidden": true},
+      {"item": "jorins_schluessel", "qty": 1, "hidden": true}
+    ],
+    "morgengrauen": [{"item": "heiltrank", "qty": 1}],
+    "quasts_kiste": [{"item": "silberkloeppel", "qty": 1}, {"item": "silberbeutel", "qty": 4}],
+    "schlick": [{"item": "verband", "qty": 1}],
+    "soeldner": [{"item": "knueppel", "qty": 1}, {"item": "silberbeutel", "qty": 1}],
+    "quast": [{"item": "heiltrank", "qty": 1}, {"item": "silberbeutel", "qty": 2}]
   },
   "startKit": ["kurzschwert", "heiltrank"],
   "startKitChoices": [["kurzschwert"], ["streitkolben"], ["dolch", "verband"], ["knueppel", "verband"]],
@@ -119,5 +480,6 @@
     "Schildwall: einmal pro Szene einen Treffer für einen Mitspieler nehmen.",
     "Moorkind: Fallen im Moor siehst du immer.",
     "Bärenstimme: Einschüchtern mit Kraft statt Wort."
-  ]
+  ],
+  "startSilver": 3
 }

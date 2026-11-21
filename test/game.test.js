@@ -101,7 +101,9 @@ test('Loot nehmen, Heiltrank benutzen', () => {
 
 test('Aktwechsel: Rast, Meilenstein, weiter; am Ende nur speichern', () => {
   const w = structuredClone(world);
-  w.scenes[2].act = 2;                     // Kapelle als Akt II
+  w.scenes[2].act = 2;                     // Moorpfad testweise als Akt II
+  for (const sc of w.scenes.slice(3)) sc.act = 3;
+  w.scenes[2].exits.forEach((e) => { e.to = null; });
   const g = new Game({ code: 'AKT', world: w, moderator: mockModerator(), rng: seededRng(3) });
   g.autoContinue = false;
   const a = g.join('Anna');
@@ -109,7 +111,7 @@ test('Aktwechsel: Rast, Meilenstein, weiter; am Ende nur speichern', () => {
   g.startGame(); clearTimeout(g.quietTimer);
   const ch = g.charOf(a.playerId);
   g.nextScene('exit_1');
-  assert.equal(g.scene.id, 's2-moorpfad');
+  assert.equal(g.scene.id, 's2-schmiede');
   ch.lp = 10;
   g.nextScene('exit_2');
   assert.equal(g.state.phase, 'interlude');
@@ -119,7 +121,7 @@ test('Aktwechsel: Rast, Meilenstein, weiter; am Ende nur speichern', () => {
   assert.equal(ch.stats.wort, 3);
   assert.ok(g.continueAct().ok);
   assert.equal(g.state.phase, 'playing');
-  assert.equal(g.scene.id, 's3-kapelle');
+  assert.equal(g.scene.id, 's3-moorpfad');
   assert.deepEqual(g.state.path.map((p) => p.exitId), ['exit_1', 'exit_2']);
   g.nextScene('exit_3');
   assert.equal(g.state.phase, 'ended');

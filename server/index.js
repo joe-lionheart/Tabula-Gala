@@ -183,6 +183,7 @@ function handle(g, viewer, host, m) {
     speak: () => g.claimSpeaker(viewer),
     say: () => g.utterance({ text: p.text, speakerId: viewer, source: 'text' }),
     milestone: () => g.chooseMilestone(viewer, p),
+    buy: () => g.buy(viewer, p.itemId),
   };
   const hostActions = {
     creation: () => g.startCreation(),
@@ -201,6 +202,8 @@ function handle(g, viewer, host, m) {
     combat: () => { g.startCombat(p.enemies || []); return { ok: true }; },
     endCombat: () => { g.endCombat('Der Kampf ist vorbei.'); return { ok: true }; },
     moderate: () => { g.runModerator(); return { ok: true }; },
+    chest: () => g.openChest(p.id),
+    riddle: () => g.startRiddle(p.id),
   };
   const fn = host ? hostActions[m.action] : playerActions[m.action];
   if (!fn) return { ok: false, error: `Unbekannte Aktion ${m.action}` };

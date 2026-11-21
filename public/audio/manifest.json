@@ -5,6 +5,8 @@
     "forest_day":   { "label": "Wald am Tag", "file": "beds/forest_day.ogg", "volume": 0.5, "synth": "wind" },
     "swamp_night":  { "label": "Moor bei Nacht", "file": "beds/swamp_night.ogg", "volume": 0.5, "synth": "swamp" },
     "chapel":       { "label": "Kapelle, Wasser, Fackeln", "file": "beds/chapel.ogg", "volume": 0.45, "synth": "drone" },
+    "smithy":       { "label": "Schmiede: Esse und Feuer", "file": "beds/smithy.ogg", "volume": 0.45, "synth": "drone" },
+    "dawn_yard":    { "label": "Morgengrauen am Wasser", "file": "beds/dawn_yard.ogg", "volume": 0.45, "synth": "swamp" },
     "combat":       { "label": "Kampf-Trommeln", "file": "beds/combat.ogg", "volume": 0.45, "synth": "drums" },
     "silence":      { "label": "Stille", "file": null, "volume": 0, "synth": null }
   },
@@ -48,6 +50,7 @@
     "bell":          { "file": "sfx/bell.ogg",          "synth": "bell",    "volume": 0.7 },
     "torch":         { "file": "sfx/torch.ogg",         "synth": "crackle", "volume": 0.5 },
     "crowd_gasp":    { "file": "sfx/crowd_gasp.ogg",    "synth": "crowd",   "volume": 0.6 },
+    "anvil":         { "file": "sfx/anvil.ogg",         "synth": "clang",   "volume": 0.5 },
     "draw_weapons":  { "file": "sfx/draw_weapons.ogg",  "synth": "slash",   "volume": 0.7 }
   },
   "weaponSounds": {

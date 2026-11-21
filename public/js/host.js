@@ -131,6 +131,10 @@ function render() {
   $('#combatCard').classList.toggle('hidden', !s.combat);
   if (s.combat) $('#combat').innerHTML = s.combat.enemies.map((e) => `<div class="enemy ${e.defeated ? 'dead' : ''}"><b class="grow">${esc(e.name)}</b><small>Abwehr ${e.abwehr}</small><div class="lp" style="width:90px"><i style="width:${(100 * e.lp) / e.lpMax}%"></i></div></div>`).join('');
 
+  $('#riddleCard').classList.toggle('hidden', !s.riddle);
+  if (s.riddle) $('#riddle').innerHTML = `<p>${esc(s.riddle.question)}</p><small>Lösung: <b>${esc((s.riddle.answers || []).join(' / '))}</b> · ${s.riddle.attempts} Fehlversuche${s.riddle.hint ? `<br>Hinweis: ${esc(s.riddle.hint)}` : ''}</small>`;
+  $('#chests').innerHTML = (s.chests || []).filter((c) => !c.opened).map((c) => `<button data-chest="${c.id}" title="Truhe von Hand öffnen">Öffnen: ${esc(c.label)}</button>`).join('');
+  $('#chests').onclick = (e) => { const id = e.target.dataset.chest; if (id) act('chest', { id }); };
   $('#loot').innerHTML = s.loot.length ? s.loot.map((l) => `<span class="pill">${esc(l.name)}${l.qty > 1 ? ` ×${l.qty}` : ''}</span>`).join(' ') : '–';
   if (s.hiddenLootCount) $('#loot').innerHTML += ` <small class="muted">(+${s.hiddenLootCount} verborgen)</small>`;
 
