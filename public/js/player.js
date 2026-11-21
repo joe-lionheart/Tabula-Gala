@@ -137,7 +137,9 @@ function renderCreation() {
       <p class="muted">Jede Figur hat einen Heiltrank. Dazu:</p>
       ${s.startKitChoices.map((label, i) => `<label class="row"><input type="radio" name="kit" value="${i}" ${draft.kit === i ? 'checked' : ''} style="width:auto"> ${esc(label)}</label>`).join('')}
     </section>
-    <button class="primary big" id="done" ${used !== 12 ? 'disabled' : ''}>Fertig</button>`;
+    <button class="primary big" id="done" ${used !== 12 ? 'disabled' : ''}>Fertig</button>
+    ${s.phase === 'playing' || s.phase === 'interlude' ? '' : `<div style="margin-top:.9rem">${wishCard()}</div>`}`;
+  bindWish();
   const keep = () => { draft.name = $('#cname').value; draft.concept = $('#concept').value; draft.kerbe = $('#kerbe').value; };
   app.onclick = (e) => {
     const inc = e.target.dataset.inc, dec = e.target.dataset.dec;
@@ -156,8 +158,28 @@ function renderWaiting() {
   app.innerHTML = `
     <h1>${esc(c.name)}</h1>
     ${charCard()}
+    ${wishCard()}
     <section class="card"><p>Gleich geht es los. Leg das Handy vor dich, Bildschirm nach oben.</p>
     <p class="muted">Am Tisch: ${state.players.map((p) => esc(p.name)).join(', ')}</p></section>`;
+  bindWish();
+}
+
+// Was wollt ihr heute erleben? Der Moderator schreibt daraus das Abenteuer.
+function wishCard() {
+  const g = state.adventureGen;
+  if (!g) return '';
+  const status = g.status === 'writing' ? '<p class="thinking">Der Moderator schreibt euer Abenteuer …</p>'
+    : g.status === 'ready' ? `<p class="pill on">Heute: ${esc(g.title)}</p>` : `<p class="muted">Heute: ${esc(g.title)}</p>`;
+  return `<section class="card">
+    <h3>Was wollt ihr heute erleben?</h3>
+    ${status}
+    ${g.wishes.length ? `<ul class="wishes">${g.wishes.map((w) => `<li><b>${esc(w.who)}:</b> ${esc(w.text)}</li>`).join('')}</ul>` : '<p class="muted">Zum Beispiel: „Piraten“, „lustig, mit einem sprechenden Esel“, „gruselig, aber nicht zu sehr“.</p>'}
+    ${g.status === 'writing' ? '' : `<div class="row"><input id="wish" class="grow" maxlength="200" placeholder="Dein Wunsch"><button id="wishBtn">Dazu</button></div>`}
+  </section>`;
+}
+function bindWish() {
+  const btn = document.getElementById('wishBtn');
+  if (btn) btn.onclick = async () => { const el = document.getElementById('wish'); const t = el.value.trim(); if (t && (await act('wish', { text: t })).ok) el.value = ''; };
 }
 
 function charCard() {

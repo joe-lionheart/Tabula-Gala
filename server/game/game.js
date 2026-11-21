@@ -54,7 +54,9 @@ export class Game {
       deals: {},                  // `${playerId}:${npc}` -> Ergebnis der Argumentationsprobe (gilt pro Szene)
       openedChests: [],           // Truhen-IDs
       penaltyMin: 0,              // Zeit, die falsche Rätselantworten gekostet haben
+      adventureGen: { status: 'test', title: world.adventure.title, note: '', wishes: [] }, // test | writing | ready | failed
     };
+    this.customWorld = false;
     this.quietTimer = null;
     this.actTimer = null;
     this.autoContinue = true;
@@ -63,7 +65,8 @@ export class Game {
 
   // Nach Neustart des Servers: Runde aus state.json zurückholen. Handys und Host verbinden sich selbst neu.
   static restore(snap, opts) {
-    const g = new Game({ ...opts, code: snap.code });
+    const g = new Game({ ...opts, world: snap.world || opts.world, code: snap.code });
+    g.customWorld = Boolean(snap.world);
     const fresh = g.state.ai;
     g.hostToken = snap.hostToken;
     g.state = { ...g.state, ...snap.state };
@@ -176,9 +179,12 @@ export class Game {
   // ---------- Ablauf ----------
   startGame() {
     if (!this.characters.length) return { ok: false, error: 'Noch keine Figur am Tisch' };
+    if (this.state.adventureGen.status === 'writing') return { ok: false, error: 'Der Moderator schreibt noch am Abenteuer. Einen Moment.' };
+    if (this.state.phase === 'playing') return { ok: false, error: 'Läuft schon' };
     this.state.phase = 'playing';
     this.state.startedAt = Date.now();
     this.say('Willkommen am Tisch. Ich bin euer Moderator heute Abend, eine künstliche Intelligenz. Ihr sprecht einfach, ich höre zu und erzähle.');
+    this.say(`Heute: ${this.world.adventure.title}. ${this.world.adventure.pitch}`);
     this.enterScene(0);
     return { ok: true };
   }
@@ -259,7 +265,7 @@ export class Game {
     this.state.milestonesOpen = this.characters.map((c) => c.playerId);
     this.cue({ reason: `Ende Akt ${act}`, sfx: [{ id: 'level_up', delayMs: 0 }], bed: 'silence' });
     this.feed('Tisch', `Ende von Akt ${act}. Rast: alle +40 LP.`, 'system');
-    this.say(`Hier endet Akt ${roman(act)}. Atmet durch, holt euch etwas zu trinken. Jede Figur darf wachsen: Wählt auf dem Handy einen Wert oder eine Fähigkeit. Wenn alle gewählt haben, geht es weiter.`);
+    this.say(`Hier endet Akt ${roman(act)}. Atmet durch, vertretet euch die Beine. Jede Figur darf wachsen: Wählt auf dem Handy einen Wert oder eine Fähigkeit. Wenn alle gewählt haben, geht es weiter.`);
     this.log('act_break', { act, nextScene: this.world.scenes[nextIndex]?.id });
     this.changed();
     return { ok: true };
@@ -285,6 +291,56 @@ export class Game {
     const outro = this.scene?.exits.find((e) => e.id === this.state.path.at(-1)?.exitId)?.outro;
     if (outro) this.say(outro);
     this.say('Hier endet das Nachtstück. Eure Figuren sind gespeichert und dürfen beim nächsten Mal wiederkommen. Danke, dass ihr mitgespielt habt.');
+    this.changed();
+    return { ok: true };
+  }
+
+  // ---------- Abenteuer auf Zuruf ----------
+  addWish(who, text) {
+    const t = String(text || '').trim().slice(0, 200);
+    if (!t) return { ok: false, error: 'Leerer Wunsch' };
+    if (!['lobby', 'creation'].includes(this.state.phase)) return { ok: false, error: 'Wünsche gehen nur vor dem Spiel' };
+    const name = who === 'host' ? 'Host' : this.player(who)?.name || '?';
+    const list = this.state.adventureGen.wishes;
+    if (list.filter((w) => w.by === who).length >= 3) return { ok: false, error: 'Höchstens 3 Wünsche pro Person' };
+    list.push({ by: who, who: name, text: t });
+    this.log('wish', { by: who, text: t });
+    this.changed();
+    return { ok: true };
+  }
+
+  async writeAdventure(author, base) {
+    const gen = this.state.adventureGen;
+    if (!['lobby', 'creation'].includes(this.state.phase)) return { ok: false, error: 'Nur vor dem Spiel' };
+    if (gen.status === 'writing') return { ok: false, error: 'Schreibt schon' };
+    gen.status = 'writing'; gen.note = 'Der Moderator schreibt euer Abenteuer …';
+    this.changed();
+    const started = Date.now();
+    try {
+      const res = await author.write({ wishes: gen.wishes, base, players: this.state.players.map((p) => p.name), durationMin: this.state.durationMin });
+      this.state.ai.tokensIn += res.tokensIn; this.state.ai.tokensOut += res.tokensOut;
+      if (this.state.phase !== 'lobby' && this.state.phase !== 'creation') return { ok: false };
+      this.world = res.world;
+      this.customWorld = !res.fallback;
+      gen.status = res.fallback ? 'test' : 'ready';
+      gen.title = this.world.adventure.title;
+      gen.note = res.fallback ? 'Ohne API-Schlüssel gibt es nur das Testabenteuer.' : `Fertig nach ${Math.round((Date.now() - started) / 1000)} s.`;
+      this.log('adventure', { generated: !res.fallback, rounds: res.rounds, fixes: res.fixes, tokensIn: res.tokensIn, tokensOut: res.tokensOut, ms: Date.now() - started, world: res.fallback ? undefined : this.world });
+    } catch (err) {
+      this.world = base; this.customWorld = false;
+      gen.status = 'failed'; gen.title = base.adventure.title;
+      gen.note = 'Das hat nicht geklappt. Ihr spielt das Testabenteuer.';
+      if (err.tokensIn) { this.state.ai.tokensIn += err.tokensIn; this.state.ai.tokensOut += err.tokensOut; }
+      this.log('adventure_error', { error: err.message, ms: Date.now() - started });
+    }
+    this.changed();
+    return { ok: true };
+  }
+
+  useTestAdventure(base) {
+    if (!['lobby', 'creation'].includes(this.state.phase) || this.state.adventureGen.status === 'writing') return { ok: false, error: 'Gerade nicht' };
+    this.world = base; this.customWorld = false;
+    Object.assign(this.state.adventureGen, { status: 'test', title: base.adventure.title, note: '' });
     this.changed();
     return { ok: true };
   }
@@ -773,6 +829,7 @@ export class Game {
       phase: s.phase, paused: s.paused,
       clock: { durationMin: s.durationMin, elapsedMin: this.elapsedMin, sceneMin: this.minutes(s.sceneStartedAt), penaltyMin: s.penaltyMin || 0 },
       world: { name: this.world.name, title: this.world.adventure.title, pitch: this.world.adventure.pitch },
+      adventureGen: { status: s.adventureGen.status, title: s.adventureGen.title, note: s.adventureGen.note, wishes: s.adventureGen.wishes.map((w) => ({ who: w.who, text: w.text })) },
       scene: scene ? {
         id: scene.id, title: scene.title, act: scene.act, budgetMin: scene.budgetMin, ambience: scene.ambience,
         ...(isHost ? { exits: scene.exits, abortSignal: scene.abortSignal, allowedSfx: scene.allowedSfx } : {}),
@@ -809,6 +866,6 @@ export class Game {
   }
 
   snapshot() {
-    return { code: this.code, hostToken: this.hostToken, state: this.state };
+    return { code: this.code, hostToken: this.hostToken, state: this.state, ...(this.customWorld ? { world: this.world } : {}) };
   }
 }

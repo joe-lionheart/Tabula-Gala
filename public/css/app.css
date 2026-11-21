@@ -96,3 +96,5 @@ body.flash { animation: flash .9s ease-out; }
 .riddle .q { font-family: Georgia, serif; font-size: 1.15rem; line-height: 1.45; }
 .loot.fresh { border: 2px solid var(--gold); animation: pulse 1.2s 3; }
 .loot button.primary { min-width: 6.5rem; }
+.wishes { margin: .4rem 0; padding-left: 1.1rem; }
+.wishes li { margin-bottom: .2rem; }

@@ -65,6 +65,9 @@ $('#btnCreation').onclick = () => act('creation');
 $('#btnStart').onclick = async () => { await audio.init(); $('#unlock').classList.add('hidden'); act('start'); };
 $('#btnPause').onclick = () => act('pause', { paused: !state.paused });
 $('#btnRest').onclick = () => act('rest');
+$('#btnWish').onclick = async () => { const t = $('#hostWish').value.trim(); if (t && (await act('wish', { text: t })).ok) $('#hostWish').value = ''; };
+$('#btnWrite').onclick = () => act('write');
+$('#btnTest').onclick = () => act('useTest');
 $('#btnContinue').onclick = () => act('continue');
 $('#btnEnd').onclick = () => { if (confirm('Abend wirklich beenden?')) act('end'); };
 $('#btnAi').onclick = () => act('ai', { enabled: !state.ai.enabled });
@@ -99,6 +102,18 @@ function render() {
   $('#title').textContent = s.world.title;
   $('#clock').textContent = s.phase === 'playing' ? `${s.clock.elapsedMin} / ${s.clock.durationMin} Min · Szene ${s.clock.sceneMin} Min` : s.phase;
   $('#lobby').classList.toggle('hidden', s.phase === 'playing' || s.phase === 'ended');
+  const pre = ['lobby', 'creation'].includes(s.phase);
+  $('#advCard').classList.toggle('hidden', !pre);
+  if (pre) {
+    const g = s.adventureGen;
+    const label = { test: 'Testabenteuer', writing: 'wird geschrieben …', ready: 'auf Zuruf geschrieben', failed: 'Schreiben fehlgeschlagen, Testabenteuer' }[g.status];
+    $('#adv').innerHTML = `<b>${esc(g.title)}</b> <span class="pill ${g.status === 'ready' ? 'on' : g.status === 'failed' ? 'off' : g.status === 'writing' ? 'gold' : ''}">${label}</span>
+      ${g.note ? `<br><small class="muted">${esc(g.note)}</small>` : ''}
+      <ul class="wishes">${g.wishes.map((w) => `<li><b>${esc(w.who)}:</b> ${esc(w.text)}</li>`).join('') || '<li class="muted">Noch keine Wünsche. Die Handys können welche schicken.</li>'}</ul>
+      ${s.ai.kind !== 'claude' ? '<small class="muted">Ohne API-Schlüssel spielt ihr das Testabenteuer.</small>' : ''}`;
+    $('#btnWrite').disabled = g.status === 'writing' || s.ai.kind !== 'claude';
+    $('#btnStart').disabled = g.status === 'writing';
+  }
   $('#btnCreation').classList.toggle('hidden', s.phase !== 'lobby');
   $('#btnStart').classList.toggle('hidden', !['lobby', 'creation'].includes(s.phase));
 

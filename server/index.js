@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Game } from './game/game.js';
 import { createModerator } from './llm/moderator.js';
+import { createAuthor } from './llm/author.js';
 import { loadEnv } from './env.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -184,6 +185,7 @@ function handle(g, viewer, host, m) {
     say: () => g.utterance({ text: p.text, speakerId: viewer, source: 'text' }),
     milestone: () => g.chooseMilestone(viewer, p),
     buy: () => g.buy(viewer, p.itemId),
+    wish: () => g.addWish(viewer, p.text),
   };
   const hostActions = {
     creation: () => g.startCreation(),
@@ -203,6 +205,9 @@ function handle(g, viewer, host, m) {
     endCombat: () => { g.endCombat('Der Kampf ist vorbei.'); return { ok: true }; },
     moderate: () => { g.runModerator(); return { ok: true }; },
     chest: () => g.openChest(p.id),
+    wish: () => g.addWish('host', p.text),
+    write: () => { g.writeAdventure(createAuthor(), world); return { ok: true }; },
+    useTest: () => g.useTestAdventure(world),
     riddle: () => g.startRiddle(p.id),
   };
   const fn = host ? hostActions[m.action] : playerActions[m.action];
