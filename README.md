@@ -9,10 +9,14 @@ Interner Projektname: Tischleiter. Regeln: Kernmechanik v0.5 (Projektwissen, Dat
 1. Der **Host-Laptop** steht in der Tischmitte. Er hört zu (Mikro), erzählt (Lautsprecher) und spielt die Klänge.
 2. Alle anderen scannen den **QR-Code** mit dem Handy. Keine App, keine Installation.
 3. Jede:r erstellt am Handy eine Figur (12 Punkte auf 5 Werte, Ausrüstung wählen).
+   Währenddessen dürfen alle Wünsche schicken („Piraten“, „lustig“). Mit API-Schlüssel schreibt der Moderator daraus das Abenteuer, sonst läuft das Testabenteuer „Das Licht im Moor“.
 4. Der Moderator eröffnet die Szene. Ihr sprecht einfach.
    Wer anfängt zu reden, tippt **einmal kurz „Ich spreche“** auf dem Handy, nicht festhalten. Ist unklar, wer gesprochen hat, fragt der Moderator nach.
 5. Verlangt der Moderator eine Probe, vibriert das Handy der Person. Echten W20 werfen und die Zahl tippen, oder das Handy würfeln lassen.
 6. Im Kampf: Gegner antippen, Waffe wählen, würfeln. Schwung, Treffer, Parade und Fanfare spielen automatisch.
+7. Rätsel: laut antworten. Nah dran? Dann darf man mit Verstand nachwürfeln. Falsch kostet Zeit, keine LP.
+8. Händler: einfach verhandeln, gute Argumente senken den Preis. Bezahlt wird mit Silber aus dem Rucksack.
+9. Loot und Truhen erscheinen auf allen Handys. Wer zuerst tippt und Platz hat, bekommt es.
 
 ## Starten (Host-Laptop)
 
@@ -62,9 +66,10 @@ server/
   engine/     Regeln (Kernmechanik v0.5): Würfel, Probe, Schaden, Kampf, Heilung, Rucksack. Ohne KI, getestet.
   game/       Eine Runde: Zustand, Abläufe, Sichten für Host und Handys
   audio/      Sound-Regie: Spielereignis → Klang
-  llm/        KI-Vertrag (Tool-Use), Validierung, Prompt, Claude + Übungsmodus
+  llm/        KI-Vertrag (Tool-Use), Validierung, Prompt, Claude + Übungsmodus, Abenteuer-Autor
   index.js    Webserver, WebSocket, QR-Code
-content/      Welten und Abenteuer (JSON). Erste Welt: Klassische Fantasy, „Nachtstück 1: Das Licht im Moor“
+content/      Welten und Abenteuer (JSON). Erste Welt: Klassische Fantasy, „Nachtstück 1: Das Licht im Moor“ (3 Akte)
+server/content Prüfer für Abenteuerdateien (auch für erzeugte)
 public/       Host-Oberfläche (host.html), Handy (join.html), Klang, Stimme
 test/         npm test
 data/         Protokolle jeder Runde (state.json, log.jsonl), nicht im Repo
@@ -81,6 +86,10 @@ Grundsätze (Dev-Roadmap):
 npm test                 # Regeln, Spielablauf, KI-Vertrag
 node scripts/smoke.mjs   # Server + Host + zwei Handys über WebSocket
 ```
+
+## Mitwirkende
+
+Icons: game-icons.net (Lorc, Delapouite, Skoll), CC BY 3.0, Liste in `public/icons/CREDITS.md`. Klänge: Kenney.nl (CC0), weitere in `docs/KLAENGE.md`.
 
 ## Bekannte Grenzen (Stand 21.11.2026)
 
