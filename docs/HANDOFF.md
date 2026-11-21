@@ -2,6 +2,11 @@
 
 > Neue Session: zuerst diese Datei, dann `docs/STAND.md`, dann `README.md`. Projektwissen claude.ai: Datei 08 (Handoff), 06 (Kernmechanik), 07 (Dev-Roadmap). Entscheidungen hier nicht neu diskutieren.
 
+## Nachtrag 21.11., 16:30: Übernahme erledigt
+- Code liegt auf dem Mac in `~/Documents/tabula-gala`, `start.command` ausführbar, `.env` aus der Vorlage angelegt (Schlüssel leer). `start.command` meldet jetzt klar, wenn Node.js fehlt.
+- Vault gepflegt: Dateien 08–11 in `02_PROJEKTE/tischleiter/` (alter Handoff → `HANDOFF_2026-11-20.md`), Rückverweise, INDEX. Master2do #236–242.
+- Übernahme-Check: #1 (Claude-Teil), #3, #7 erledigt. Offen bei Ul: Node.js installieren und einmal starten, dann GO API-Konto und Schlüssel selbst in `.env`.
+
 ## Ziel
 Januar-Version mit KI-Moderator für die erste Runde mit Familie und Freunden. Kein Testabend mit Ul als Moderator, vorher nur eine Generalprobe mit einer Person.
 
@@ -18,7 +23,7 @@ Januar-Version mit KI-Moderator für die erste Runde mit Familie und Freunden. K
 - Feuerwaffen erst mit eigener Edition. Wort in der App: „Figur erstellen“.
 
 ## Host-Rechner
-MacBook, macOS, Apple Silicon (laut Desktop-App, 21.11.). Kein Ordner verbunden. Vault: `~/Documents/ClaudeProjektbucket`.
+MacBook, macOS, Apple Silicon (laut Desktop-App, 21.11.). Spielordner `~/Documents/tabula-gala`. Vault: `~/Documents/ClaudeProjektbucket`.
 
 ## Übernahme-Check: wer macht was
 | # | Aufgabe | Claude | Ul |
