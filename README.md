@@ -36,7 +36,7 @@ Für den echten Moderator `.env.example` nach `.env` kopieren und den Claude-API
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 TISCHLEITER_MODEL=claude-sonnet-5-5
-TISCHLEITER_TOKEN_DECKEL=800000
+TISCHLEITER_TOKEN_DECKEL=2000000
 ```
 
 Der Token-Deckel gilt pro Runde. Ist er erreicht, schaltet die KI ab und der Host kann von Hand weitermachen. Verbrauch und Antwortzeit stehen links im Host-Fenster.

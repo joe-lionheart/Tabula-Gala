@@ -9,7 +9,7 @@ export function createModerator(env = process.env) {
   return claudeModerator({
     key,
     model: env.TISCHLEITER_MODEL || 'claude-sonnet-5-5',
-    maxTokensPerSession: Number(env.TISCHLEITER_TOKEN_DECKEL || 800000),
+    maxTokensPerSession: Number(env.TISCHLEITER_TOKEN_DECKEL || 2000000),
   });
 }
 

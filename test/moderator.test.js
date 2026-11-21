@@ -19,7 +19,7 @@ test('Claude-Moderator: Anfrage mit Tool-Zwang, Antwort aus tool_use', async () 
     assert.equal(sent.body.model, 'claude-sonnet-5-5');
     assert.equal(r.raw.narration, 'Hallo');
     assert.equal(r.tokensIn, 1200);
-    await assert.rejects(m.judge({ system: 'S', context: 'C', usage: { tokensIn: 900000, tokensOut: 0 } }), /Deckel/);
+    await assert.rejects(m.judge({ system: 'S', context: 'C', usage: { tokensIn: 2100000, tokensOut: 0 } }), /Deckel/);
   } finally { globalThis.fetch = orig; }
 });
 
