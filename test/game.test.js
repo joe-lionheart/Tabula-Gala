@@ -99,16 +99,31 @@ test('Loot nehmen, Heiltrank benutzen', () => {
   assert.equal(ch.lp, 70);
 });
 
-test('Szenenwechsel über Ausgang bis zum Ende, Meilenstein', () => {
-  const { g, a } = setup();
+test('Aktwechsel: Rast, Meilenstein, weiter; am Ende nur speichern', () => {
+  const w = structuredClone(world);
+  w.scenes[2].act = 2;                     // Kapelle als Akt II
+  const g = new Game({ code: 'AKT', world: w, moderator: mockModerator(), rng: seededRng(3) });
+  g.autoContinue = false;
+  const a = g.join('Anna');
+  g.createCharacter(a.playerId, { name: 'Mira', stats, kit: 0 });
+  g.startGame(); clearTimeout(g.quietTimer);
+  const ch = g.charOf(a.playerId);
   g.nextScene('exit_1');
   assert.equal(g.scene.id, 's2-moorpfad');
+  ch.lp = 10;
   g.nextScene('exit_2');
-  assert.equal(g.scene.id, 's3-kapelle');
-  g.nextScene('exit_2');
-  assert.equal(g.state.phase, 'ended');
+  assert.equal(g.state.phase, 'interlude');
+  assert.equal(ch.lp, 50);                  // Rast +40
+  assert.equal(g.view(a.playerId).milestoneOpen, true);
   assert.ok(g.chooseMilestone(a.playerId, { stat: 'wort' }).ok);
-  assert.equal(g.charOf(a.playerId).stats.wort, 3);
+  assert.equal(ch.stats.wort, 3);
+  assert.ok(g.continueAct().ok);
+  assert.equal(g.state.phase, 'playing');
+  assert.equal(g.scene.id, 's3-kapelle');
+  assert.deepEqual(g.state.path.map((p) => p.exitId), ['exit_1', 'exit_2']);
+  g.nextScene('exit_3');
+  assert.equal(g.state.phase, 'ended');
+  assert.equal(g.chooseMilestone(a.playerId, { stat: 'kraft' }).ok, false);
 });
 
 test('Vertrag: unbekannte IDs werden verworfen, DC wird später geklemmt', () => {
@@ -127,4 +142,43 @@ test('Vertrag: unbekannte IDs werden verworfen, DC wird später geklemmt', () =>
   const ok = validateJudgment({ narration: 'x', scene_signal: 'continue', check: { player_id: a.playerId, stat: 'kraft', dc: 99, reason: 'x', on_success: 'a', on_fail: 'b' } }, ctx);
   g.requestCheck(ok.judgment.check);
   assert.equal(g.rollCheck(a.playerId, 10).result.dc, 25);
+});
+
+test('Wiederbeitritt: gleicher Name bekommt den alten Platz, nur wenn getrennt', () => {
+  const { g, a } = setup();
+  assert.equal(g.join('anna').ok, false);           // Anna ist noch verbunden
+  g.player(a.playerId).connected = false;
+  const r = g.join(' Anna ');
+  assert.ok(r.ok && r.rejoined);
+  assert.equal(r.playerId, a.playerId);
+  assert.equal(r.token, a.token);
+  assert.equal(g.state.players.length, 2);
+});
+
+test('Nachzügler baut während des Spiels eine Figur und wird angekündigt', () => {
+  const { g, events } = setup();
+  const c = g.join('Carla');
+  const r = g.createCharacter(c.playerId, { name: 'Edda', concept: 'Kräuterfrau', stats, kit: 0 });
+  assert.ok(r.ok);
+  assert.match(events.filter((e) => e.type === 'say').at(-1).text, /Edda stößt zu euch/);
+  assert.equal(g.createCharacter(c.playerId, { name: 'Edda', stats, kit: 0 }).ok, false);
+});
+
+test('Wiederherstellen nach Neustart: Zustand, Tokens, pausiert, alle getrennt', () => {
+  const { g, a } = setup();
+  const snap = JSON.parse(JSON.stringify(g.snapshot()));
+  const h = Game.restore(snap, { world, moderator: mockModerator(), rng: seededRng(1) });
+  assert.equal(h.code, g.code);
+  assert.ok(h.isHost(g.hostToken));
+  assert.equal(h.authPlayer(a.token).id, a.playerId);
+  assert.equal(h.scene.id, g.scene.id);
+  assert.equal(h.state.paused, true);
+  assert.ok(h.state.players.every((p) => !p.connected));
+  assert.equal(h.state.ai.busy, false);
+});
+
+test('Kampfbeginn lässt alle Handys vibrieren', async () => {
+  const { g, events } = setup();
+  g.startCombat(['wegelagerer']);
+  assert.ok(events.some((e) => e.type === 'buzz' && e.all && e.kind === 'combat'));
 });

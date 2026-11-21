@@ -22,12 +22,16 @@ export class AudioEngine {
     this.manifest = await fetch('/audio/manifest.json').then((r) => r.json());
     const { files } = await fetch('/api/audio-files').then((r) => r.json()).catch(() => ({ files: [] }));
     this.available = new Set(files);
+    // Gleicher Name, andere Endung zählt auch: beds/tavern.mp3 statt beds/tavern.ogg
+    this.byBase = new Map(files.map((f) => [f.replace(/\.[^./]+$/, ''), f]));
   }
 
-  async load(path) {
+  async load(wanted) {
+    if (!wanted) return null;
+    const path = this.available?.has(wanted) ? wanted : this.byBase?.get(wanted.replace(/\.[^./]+$/, ''));
     if (!path) return null;
     if (this.buffers.has(path)) return this.buffers.get(path);
-    if (this.missing.has(path) || !this.available?.has(path)) return null;
+    if (this.missing.has(path)) return null;
     try {
       const res = await fetch(`/audio/${path}`);
       if (!res.ok) throw new Error(res.status);

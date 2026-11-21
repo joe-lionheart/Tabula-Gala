@@ -55,7 +55,7 @@ $('#unlock').onclick = async () => {
   $('#unlock').classList.add('hidden');
   if (state?.scene) audio.playCue({ bed: currentBedGuess(), sfx: [] });
 };
-function currentBedGuess() { return { 's1-wirtshaus': 'tavern', 's2-moorpfad': 'swamp_night', 's3-kapelle': 'chapel' }[state.scene?.id] || 'silence'; }
+function currentBedGuess() { return state?.phase === 'playing' ? state.scene?.ambience || 'silence' : 'silence'; }
 
 $('#btnMic').onclick = () => {
   if (!mic.supported) return toast('Spracherkennung braucht Chrome oder Edge. Sonst unten tippen.', 'error');
@@ -65,6 +65,7 @@ $('#btnCreation').onclick = () => act('creation');
 $('#btnStart').onclick = async () => { await audio.init(); $('#unlock').classList.add('hidden'); act('start'); };
 $('#btnPause').onclick = () => act('pause', { paused: !state.paused });
 $('#btnRest').onclick = () => act('rest');
+$('#btnContinue').onclick = () => act('continue');
 $('#btnEnd').onclick = () => { if (confirm('Abend wirklich beenden?')) act('end'); };
 $('#btnAi').onclick = () => act('ai', { enabled: !state.ai.enabled });
 $('#btnModerate').onclick = () => act('moderate');
@@ -116,9 +117,11 @@ function render() {
     <small class="muted">${ai.calls} Antworten · ${ai.tokensIn + ai.tokensOut} Tokens${ai.lastLatencyMs ? ` · zuletzt ${(ai.lastLatencyMs / 1000).toFixed(1)} s` : ''}</small>
     ${ai.lastError ? `<div><small style="color:var(--red)">${esc(ai.lastError)}</small></div>` : ''}`;
 
-  $('#sceneTitle').textContent = s.scene ? s.scene.title : s.phase === 'ended' ? 'Ende des Akts' : 'Lobby';
+  $('#sceneTitle').textContent = s.phase === 'interlude' ? `Pause · gleich Akt ${s.nextScene?.act}` : s.phase === 'ended' ? 'Ende des Abends' : s.scene ? s.scene.title : 'Lobby';
+  $('#btnContinue').classList.toggle('hidden', s.phase !== 'interlude');
+  $('#btnContinue').textContent = s.milestonesPending ? `Weiter, ohne zu warten (${s.milestonesPending} wählen noch)` : `Akt ${s.nextScene?.act ?? ''} beginnen`;
   $('#scene').innerHTML = s.scene ? `Akt ${s.scene.act} · Budget ${s.scene.budgetMin} Min<br><small>${esc(s.scene.abortSignal)}</small>` : '–';
-  $('#exits').innerHTML = s.scene ? s.scene.exits.map((e) => `<button data-exit="${e.id}" title="${esc(e.label)}">→ ${esc(e.label)}</button>`).join('') : '';
+  $('#exits').innerHTML = s.scene && s.phase === 'playing' ? s.scene.exits.map((e) => `<button data-exit="${e.id}" title="${esc(e.label)}">→ ${esc(e.label)}</button>`).join('') : '';
   $('#exits').onclick = (e) => { const id = e.target.dataset.exit; if (id && confirm(`Szene beenden: ${e.target.title}?`)) act('next', { exitId: id }); };
   $('#btnPause').textContent = s.paused ? 'Weiter' : 'Pause';
 

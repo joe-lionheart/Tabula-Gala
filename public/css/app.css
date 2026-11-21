@@ -83,3 +83,11 @@ input, select, textarea { background: #0c111b; border: 1px solid var(--line); bo
 .hidden { display: none !important; }
 .sfxgrid { display: flex; flex-wrap: wrap; gap: .3rem; }
 .sfxgrid button { padding: .35rem .55rem; font-size: .8rem; }
+
+/* Handy: große Würfeltasten, Signal, Verbindungsbanner */
+.dice { grid-template-columns: repeat(4, 1fr); gap: .5rem; }
+.dice button { min-height: 3.6rem; font-size: 1.5rem; font-weight: 700; padding: 0; }
+.dice button:active { background: var(--gold); color: #1a1206; }
+body.flash { animation: flash .9s ease-out; }
+@keyframes flash { 0% { background: #4a3a14; } 100% { background: var(--bg); } }
+#netbanner { position: fixed; top: 0; left: 0; right: 0; z-index: 10; background: var(--red); color: #fff; text-align: center; padding: .6rem; font-weight: 600; cursor: pointer; }

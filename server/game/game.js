@@ -15,6 +15,7 @@ const QUIET_MS = 1400;             // Pause, nach der der Moderator antwortet
 const FEED_MAX = 60;
 
 const token = () => randomBytes(16).toString('hex');
+const roman = (n) => ['', 'I', 'II', 'III', 'IV', 'V'][n] || String(n);
 
 export class Game {
   constructor({ code, world, moderator, durationMin = 90, rng = cryptoRng(), persist = () => {}, log = () => {} }) {
@@ -27,7 +28,9 @@ export class Game {
     this.listeners = new Set();
     this.hostToken = token();
     this.state = {
-      phase: 'lobby',             // lobby | creation | playing | ended
+      phase: 'lobby',             // lobby | creation | playing | interlude | ended
+      nextSceneIndex: null,       // während der Pause zwischen zwei Akten
+      path: [],                   // gewählte Ausgänge: {sceneId, exitId, label}
       paused: false,
       durationMin,
       startedAt: null,
@@ -47,7 +50,26 @@ export class Game {
       milestonesOpen: [],
     };
     this.quietTimer = null;
+    this.actTimer = null;
+    this.autoContinue = true;
     this.dirty = false;
+  }
+
+  // Nach Neustart des Servers: Runde aus state.json zurückholen. Handys und Host verbinden sich selbst neu.
+  static restore(snap, opts) {
+    const g = new Game({ ...opts, code: snap.code });
+    const fresh = g.state.ai;
+    g.hostToken = snap.hostToken;
+    g.state = { ...g.state, ...snap.state };
+    g.state.ai = { ...fresh, ...snap.state.ai, kind: fresh.kind, model: fresh.model, busy: false, lastError: null };
+    for (const p of g.state.players) { p.connected = false; p.sockets = 0; }
+    g.state.activeSpeaker = null;
+    if (g.state.phase === 'playing') {
+      g.state.paused = true;
+      g.feed('Tisch', 'Der Tisch war kurz weg und ist wieder da. Host: „Weiter“ drücken.', 'system');
+    }
+    g.log('restore', { phase: g.state.phase, sceneIndex: g.state.sceneIndex });
+    return g;
   }
 
   // ---------- Infrastruktur ----------
@@ -91,6 +113,15 @@ export class Game {
   join(name) {
     const clean = String(name || '').trim().slice(0, 24);
     if (!clean) return { ok: false, error: 'Bitte einen Namen eingeben' };
+    // Wiederbeitritt: anderes Handy, Browser-Speicher gelöscht, Tab zu. Gleicher Name = gleicher Platz.
+    const same = this.state.players.find((p) => p.name.toLowerCase() === clean.toLowerCase());
+    if (same) {
+      if (same.connected) return { ok: false, error: `${same.name} sitzt schon am Tisch. Schließ das andere Fenster oder nimm einen anderen Namen.` };
+      this.log('rejoin', { playerId: same.id });
+      this.feed('Tisch', `${same.name} ist wieder da.`, 'system');
+      this.changed();
+      return { ok: true, playerId: same.id, token: same.token, rejoined: true };
+    }
     if (this.state.players.length >= 6) return { ok: false, error: 'Die Runde ist voll (6)' };
     const p = { id: randomUUID().slice(0, 8), name: clean, token: token(), connected: true };
     this.state.players.push(p);
@@ -108,7 +139,9 @@ export class Game {
   }
 
   createCharacter(playerId, { name, concept, kerbe, stats, kit }) {
-    if (!['lobby', 'creation'].includes(this.state.phase)) return { ok: false, error: 'Figuren entstehen vor dem Spiel' };
+    if (this.state.phase === 'ended') return { ok: false, error: 'Der Abend ist vorbei' };
+    if (this.state.characters[playerId]) return { ok: false, error: 'Du hast schon eine Figur' };
+    const late = ['playing', 'interlude'].includes(this.state.phase);
     const res = createCharacter({ id: `c-${playerId}`, playerId, name, concept, kerbe, stats });
     if (!res.ok) return { ok: false, error: res.errors.join('; ') };
     const ch = res.character;
@@ -117,7 +150,11 @@ export class Game {
     this.state.inventories[ch.id] = inv;
     const choice = this.world.startKitChoices[Number(kit)] || this.world.startKitChoices[0];
     for (const id of [...choice, 'heiltrank']) this.giveItem(ch, id, 1);
-    this.log('character', { playerId, character: ch });
+    this.log('character', { playerId, character: ch, late });
+    if (late) {
+      this.say(`Die Tür geht auf. ${ch.name} stößt zu euch${ch.concept ? `: ${ch.concept}` : ''}.`);
+      this.state.transcript.push({ ts: Date.now(), speakerId: 'system', speakerName: 'Tisch', text: `${ch.name} ist neu dazugekommen.`, source: 'system' });
+    }
     this.changed();
     return { ok: true };
   }
@@ -187,13 +224,45 @@ export class Game {
 
   nextScene(exitId) {
     const s = this.scene;
-    if (!s) return { ok: false, error: 'Keine Szene' };
+    if (!s || this.state.phase !== 'playing') return { ok: false, error: 'Keine Szene' };
     const exit = s.exits.find((e) => e.id === exitId) || s.exits[0];
     this.log('exit', { sceneId: s.id, exit: exit.id });
     this.feed('Tisch', `Ausgang: ${exit.label}`, 'system');
+    this.state.path.push({ sceneId: s.id, exitId: exit.id, label: exit.label });
     if (!exit.to) return this.endGame();
-    const idx = this.world.scenes.findIndex((x) => x.id === exit.to);
-    this.enterScene(idx >= 0 ? idx : this.state.sceneIndex + 1);
+    let idx = this.world.scenes.findIndex((x) => x.id === exit.to);
+    if (idx < 0) idx = this.state.sceneIndex + 1;
+    const next = this.world.scenes[idx];
+    if (next && next.act > s.act) return this.actBreak(s.act, idx);
+    this.enterScene(idx);
+    return { ok: true };
+  }
+
+  // Ende eines Akts (Kernmechanik §4, §5): Rast für alle, Meilenstein, dann weiter
+  actBreak(act, nextIndex) {
+    clearTimeout(this.quietTimer);
+    this.state.phase = 'interlude';
+    this.state.nextSceneIndex = nextIndex;
+    this.state.combat = null;
+    this.state.pendingCheck = null;
+    for (const ch of this.characters) { ch.conditions = []; heal(ch, 'rest', this.rng); if (ch.lp > 0) ch.down = false; }
+    this.state.milestonesOpen = this.characters.map((c) => c.playerId);
+    this.cue({ reason: `Ende Akt ${act}`, sfx: [{ id: 'level_up', delayMs: 0 }], bed: 'silence' });
+    this.feed('Tisch', `Ende von Akt ${act}. Rast: alle +40 LP.`, 'system');
+    this.say(`Hier endet Akt ${roman(act)}. Atmet durch, holt euch etwas zu trinken. Jede Figur darf wachsen: Wählt auf dem Handy einen Wert oder eine Fähigkeit. Wenn alle gewählt haben, geht es weiter.`);
+    this.log('act_break', { act, nextScene: this.world.scenes[nextIndex]?.id });
+    this.changed();
+    return { ok: true };
+  }
+
+  continueAct() {
+    if (this.state.phase !== 'interlude') return { ok: false, error: 'Gerade keine Pause zwischen den Akten' };
+    const idx = this.state.nextSceneIndex;
+    this.state.phase = 'playing';
+    this.state.nextSceneIndex = null;
+    this.state.milestonesOpen = [];
+    this.say(`Akt ${roman(this.world.scenes[idx]?.act ?? 2)}.`);
+    this.enterScene(idx);
     return { ok: true };
   }
 
@@ -201,9 +270,11 @@ export class Game {
     this.state.phase = 'ended';
     this.state.combat = null;
     this.state.pendingCheck = null;
-    this.state.milestonesOpen = this.characters.map((c) => c.playerId);
+    this.state.milestonesOpen = [];
     this.cue({ reason: 'Ende', sfx: [{ id: 'level_up', delayMs: 0 }], bed: 'silence' });
-    this.say('Hier endet der erste Akt. Jede Figur darf wachsen: Wählt auf dem Handy einen Wert oder eine Fähigkeit.');
+    const outro = this.scene?.exits.find((e) => e.id === this.state.path.at(-1)?.exitId)?.outro;
+    if (outro) this.say(outro);
+    this.say('Hier endet das Nachtstück. Eure Figuren sind gespeichert und dürfen beim nächsten Mal wiederkommen. Danke, dass ihr mitgespielt habt.');
     this.changed();
     return { ok: true };
   }
@@ -218,6 +289,12 @@ export class Game {
     this.state.milestonesOpen = this.state.milestonesOpen.filter((id) => id !== playerId);
     this.cue(sound.milestoneCue());
     this.log('milestone', { playerId, choice });
+    this.feed('Tisch', `${ch.name} wächst: ${choice.stat ? `${STAT_LABELS[choice.stat]} +1` : choice.ability}`, 'system');
+    // Alle haben gewählt: kurz durchatmen, dann beginnt der nächste Akt von selbst
+    if (this.state.phase === 'interlude' && !this.state.milestonesOpen.length && this.autoContinue) {
+      clearTimeout(this.actTimer);
+      this.actTimer = setTimeout(() => { if (this.state.phase === 'interlude') this.continueAct(); }, 4000);
+    }
     this.changed();
     return { ok: true };
   }
@@ -283,6 +360,7 @@ export class Game {
       transcript: this.transcriptText(),
       lastUtterance: [...this.state.transcript].reverse().find((u) => u.source !== 'moderator'),
       minutesLeft: Math.max(0, this.state.durationMin - this.minutes(this.state.startedAt)),
+      path: this.state.path,
       sceneMinutes: this.minutes(this.state.sceneStartedAt),
       beds: sound.allBeds(),
       sfx: [...new Set([...(scene.allowedSfx || []), 'door_creak', 'coins', 'magic', 'bell'])],
@@ -381,6 +459,7 @@ export class Game {
     if (!enemies.length) return;
     this.state.combat = { enemies };
     this.cue(sound.combatStartCue(enemies));
+    this.emit({ type: 'buzz', all: true, kind: 'combat' });
     this.log('combat_start', { enemies: enemies.map((e) => e.id) });
     this.changed();
   }
@@ -522,7 +601,7 @@ export class Game {
       clock: { durationMin: s.durationMin, elapsedMin: this.minutes(s.startedAt), sceneMin: this.minutes(s.sceneStartedAt) },
       world: { name: this.world.name, title: this.world.adventure.title, pitch: this.world.adventure.pitch },
       scene: scene ? {
-        id: scene.id, title: scene.title, act: scene.act, budgetMin: scene.budgetMin,
+        id: scene.id, title: scene.title, act: scene.act, budgetMin: scene.budgetMin, ambience: scene.ambience,
         ...(isHost ? { exits: scene.exits, abortSignal: scene.abortSignal, allowedSfx: scene.allowedSfx } : {}),
       } : null,
       players: s.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected, hasCharacter: Boolean(s.characters[p.id]) })),
@@ -539,6 +618,8 @@ export class Game {
       activeSpeaker: s.activeSpeaker && s.activeSpeaker.until > Date.now() ? s.activeSpeaker.playerId : null,
       feed: s.feed.slice(-30),
       milestoneOpen: !isHost && s.milestonesOpen.includes(viewer),
+      milestonesPending: s.milestonesOpen.length,
+      nextScene: s.phase === 'interlude' ? { title: this.world.scenes[s.nextSceneIndex]?.title, act: this.world.scenes[s.nextSceneIndex]?.act } : null,
       abilities: this.world.abilities,
       startKitChoices: this.world.startKitChoices.map((c) => c.map((id) => this.itemDef(id)?.name).join(' + ')),
       stats: STATS.map((k) => ({ key: k, label: STAT_LABELS[k] })),

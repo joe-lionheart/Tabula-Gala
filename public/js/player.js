@@ -10,7 +10,38 @@ let draft = { name: '', concept: '', kerbe: '', kit: 0, stats: { kraft: 2, agili
 let selectedUid = null;
 let attackTarget = null;
 let attackWeapon = null;
-let speakTimer = null;
+let busy = false;            // Doppeltipp-Schutz beim Würfeln
+let lastCheckId = null;
+
+// ---------- Signal: Vibration, Ton (iPhone kann nicht vibrieren), Aufleuchten ----------
+let actx = null;
+const unlockTone = () => {
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch { /* ohne Ton */ }
+};
+document.addEventListener('pointerdown', unlockTone, { passive: true });
+function signal(kind = 'check') {
+  if (navigator.vibrate) navigator.vibrate(kind === 'combat' ? [200, 80, 200, 80, 200] : [120, 60, 120]);
+  if (actx && actx.state === 'running') {
+    const notes = kind === 'combat' ? [330, 247] : [660, 880];
+    notes.forEach((f, i) => {
+      const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + i * 0.13;
+      o.frequency.value = f; o.type = 'sine';
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 0.2);
+    });
+  }
+  document.body.classList.remove('flash'); void document.body.offsetWidth; document.body.classList.add('flash');
+}
+
+// ---------- Verbindungsanzeige ----------
+let offlineTimer = null;
+function netBanner(status) {
+  let b = document.getElementById('netbanner');
+  if (!b) { b = document.createElement('div'); b.id = 'netbanner'; b.className = 'hidden'; b.textContent = 'Verbindung weg – verbinde neu …'; b.onclick = () => net?.reconnect(true); document.body.append(b); }
+  clearTimeout(offlineTimer);
+  if (status === 'online') b.classList.add('hidden');
+  else offlineTimer = setTimeout(() => b.classList.remove('hidden'), 1500);
+}
 
 if (!token) renderJoin(); else start();
 
@@ -20,15 +51,18 @@ function renderJoin(error = '') {
     <section class="card">
       <h2>Runde ${esc(code)}</h2>
       <p class="muted">Wie heißt du am Tisch?</p>
-      <input id="name" placeholder="Dein Vorname" maxlength="24" autocomplete="given-name">
+      <input id="name" placeholder="Dein Vorname" maxlength="24" autocomplete="given-name" value="${esc(localStorage.getItem('tg_name') || '')}">
+      <p class="muted"><small>Warst du schon am Tisch? Gleicher Name = dein alter Platz.</small></p>
       ${error ? `<p style="color:var(--red)">${esc(error)}</p>` : ''}
       <p><button class="primary big" id="go">Platz nehmen</button></p>
     </section>`;
   $('#go').onclick = async () => {
     const name = $('#name').value.trim();
-    const r = await fetch(`/api/sessions/${code}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }).then((x) => x.json());
+    let r;
+    try { r = await fetch(`/api/sessions/${code}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }).then((x) => x.json()); }
+    catch { return renderJoin('Der Tisch ist nicht erreichbar. Bist du im selben WLAN?'); }
     if (!r.ok) return renderJoin(r.error || 'Beitritt fehlgeschlagen');
-    token = r.token; localStorage.setItem(key, token);
+    token = r.token; localStorage.setItem(key, token); localStorage.setItem('tg_name', name);
     start();
   };
 }
@@ -38,9 +72,10 @@ function start() {
     code, token,
     onState: (s) => { const j = JSON.stringify(s); if (j === lastJson) return; lastJson = j; state = s; render(); },
     onStatus: (s, err) => {
-      if (err) { localStorage.removeItem(key); token = null; renderJoin(err); net?.close(); }
+      if (err) { localStorage.removeItem(key); token = null; netBanner('online'); renderJoin(err === 'Unbekannter Zugang' ? 'Die Runde wurde neu gestartet. Gib deinen Namen wie vorher ein, dann bekommst du deinen Platz zurück.' : err); net?.close(); return; }
+      netBanner(s);
     },
-    onMessage: (m) => { if (m.type === 'buzz' && navigator.vibrate) navigator.vibrate([120, 60, 120]); },
+    onMessage: (m) => { if (m.type === 'buzz') signal(m.kind); },
   });
 }
 
@@ -49,6 +84,13 @@ const act = async (action, payload) => {
   if (!r.ok && r.error) toast(r.error, 'error');
   return r;
 };
+
+// Würfeln: einmal tippen zählt, bis der Server antwortet
+async function rollOnce(action, payload) {
+  if (busy) return;
+  busy = true; render();
+  try { await act(action, payload); } finally { busy = false; render(); }
+}
 
 function render() {
   // Eingaben und Fokus über Neuzeichnen hinweg behalten
@@ -65,6 +107,7 @@ function draw() {
   const me = s.me;
   if (!me && s.phase !== 'ended') return renderCreation();
   if (s.phase === 'lobby' || s.phase === 'creation') return renderWaiting();
+  if (s.phase === 'interlude') return renderInterlude();
   if (s.phase === 'ended') return renderEnd();
   renderPlay();
 }
@@ -137,15 +180,15 @@ function renderPlay() {
   const weapons = inv.items.filter((i) => /schwert|kolben|dolch|bogen|knüppel/i.test(i.name));
 
   app.innerHTML = `
-    ${charCard()}
-    <button class="speak ${speaking ? 'active' : ''}" id="speak">${speaking ? 'Du hast das Wort' : 'Ich spreche'}</button>
-    <p class="muted" style="text-align:center;margin:.3rem 0 .9rem">Kurz antippen, dann einfach reden. Nicht festhalten.</p>
-
     ${myCheck ? `<section class="card alert">
       <h2>Du würfelst</h2>
       <p>${esc(myCheck.reason)}<br><b>${esc(myCheck.statLabel)} ${myCheck.statValue}</b> · Ziel ${myCheck.dc}</p>
       ${diceHtml('roll')}
     </section>` : ''}
+
+    ${charCard()}
+    <button class="speak ${speaking ? 'active' : ''}" id="speak">${speaking ? 'Du hast das Wort' : 'Ich spreche'}</button>
+    <p class="muted" style="text-align:center;margin:.3rem 0 .9rem">Kurz antippen, dann einfach reden. Nicht festhalten.</p>
 
     ${s.combat ? `<section class="card ${myCheck ? '' : 'alert'}">
       <h2>Kampf</h2>
@@ -154,7 +197,7 @@ function renderPlay() {
         ${e.defeated ? '' : `<button data-target="${e.instanceId}" class="${attackTarget === e.instanceId ? 'primary' : ''}">Angreifen</button>`}</div>`).join('')}
       ${attackTarget ? `
         <label>Womit? <select id="weapon">${weapons.map((w) => `<option value="${w.uid}" ${attackWeapon === w.uid ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}<option value="">Fäuste</option></select></label>
-        <p class="muted">Würfle deinen W20 und tipp die Zahl, oder lass das Handy würfeln:</p>${diceHtml('attack')}` : ''}
+        ${diceHtml('attack')}` : ''}
     </section>` : ''}
 
     ${s.loot.length ? `<section class="card"><h3>Hier liegt</h3>
@@ -183,8 +226,8 @@ function renderPlay() {
     if (d.target) { attackTarget = d.target; attackWeapon = attackWeapon ?? weapons[0]?.uid ?? ''; return render(); }
     if (d.die) {
       const natural = d.die === 'auto' ? undefined : Number(d.die);
-      if (d.mode === 'roll') return act('roll', { natural });
-      if (d.mode === 'attack') { await act('attack', { enemyId: attackTarget, weaponUid: $('#weapon')?.value || attackWeapon, natural }); return; }
+      if (d.mode === 'roll') return rollOnce('roll', { natural });
+      if (d.mode === 'attack') return rollOnce('attack', { enemyId: attackTarget, weaponUid: $('#weapon')?.value || attackWeapon, natural });
     }
     if (d.uid) { selectedUid = selectedUid === d.uid ? null : d.uid; return render(); }
     if (d.cell && selectedUid) { const [x, y] = d.cell.split(',').map(Number); await act('move', { uid: selectedUid, x, y }); selectedUid = null; return; }
@@ -193,11 +236,16 @@ function renderPlay() {
     if (d.drop) { await act('drop', { uid: d.drop }); selectedUid = null; }
   };
   if (!s.combat) attackTarget = null;
+  // Neue Probe: nach oben scrollen, damit niemand sie unter dem Rucksack sucht
+  if (myCheck && myCheck.id !== lastCheckId) window.scrollTo({ top: 0, behavior: 'smooth' });
+  lastCheckId = myCheck?.id ?? null;
 }
 
 function diceHtml(mode) {
-  return `<div class="dice">${Array.from({ length: 20 }, (_, i) => i + 1).map((n) => `<button data-die="${n}" data-mode="${mode}" class="${n === 20 ? 'n20' : n === 1 ? 'n1' : ''}">${n}</button>`).join('')}</div>
-    <p><button class="big" data-die="auto" data-mode="${mode}">Handy würfeln lassen</button></p>`;
+  const off = busy ? 'disabled' : '';
+  return `<p class="muted" style="margin:.2rem 0 .5rem">Echten W20 werfen und die Zahl tippen:</p>
+    <div class="dice">${Array.from({ length: 20 }, (_, i) => i + 1).map((n) => `<button ${off} data-die="${n}" data-mode="${mode}" class="${n === 20 ? 'n20' : n === 1 ? 'n1' : ''}">${n}</button>`).join('')}</div>
+    <p style="margin-top:.6rem"><button ${off} class="big primary" data-die="auto" data-mode="${mode}">${busy ? 'Würfel rollt …' : 'Oder: Handy würfeln lassen'}</button></p>`;
 }
 
 function bagHtml(inv) {
@@ -222,17 +270,27 @@ function itemActions(inv) {
 
 function renderEnd() {
   const s = state;
+  app.onclick = null;
   if (!s.me) { app.innerHTML = '<h1>Ende</h1><p>Danke fürs Mitspielen.</p>'; return; }
+  app.innerHTML = `<h1>Ende des Abends</h1>${charCard()}<section class="card"><p>Deine Figur ist gespeichert und darf beim nächsten Mal wiederkommen. Danke fürs Mitspielen.</p></section>`;
+}
+
+// Pause zwischen zwei Akten: Rast ist gebucht, jede Figur wählt ihren Meilenstein
+function renderInterlude() {
+  const s = state;
   const c = s.me.character;
+  const next = s.nextScene ? `Als Nächstes: Akt ${s.nextScene.act}, „${esc(s.nextScene.title)}“` : '';
   if (!s.milestoneOpen) {
-    app.innerHTML = `<h1>Ende des Akts</h1>${charCard()}<section class="card"><p>Deine Figur ist gespeichert. Danke fürs Mitspielen.</p></section>`;
+    app.onclick = null;
+    app.innerHTML = `<h1>Pause</h1>${charCard()}<section class="card"><p>Gewählt. ${s.milestonesPending ? `Noch ${s.milestonesPending} am Tisch wählen.` : 'Gleich geht es weiter.'}</p><p class="muted">${next}</p></section>`;
     return;
   }
-  app.innerHTML = `<h1>Meilenstein</h1>${charCard()}
+  app.innerHTML = `<h1>Deine Figur wächst</h1>${charCard()}
     <section class="card"><h3>+1 auf einen Wert</h3>
       <div class="row">${s.stats.map((st) => `<button data-ms-stat="${st.key}" ${c.stats[st.key] >= 5 ? 'disabled' : ''}>${st.label} ${c.stats[st.key]} → ${c.stats[st.key] + 1}</button>`).join('')}</div></section>
     <section class="card"><h3>oder eine Fähigkeit</h3>
-      ${s.abilities.map((a) => `<p><button data-ms-ability="${esc(a)}" style="text-align:left;width:100%">${esc(a)}</button></p>`).join('')}</section>`;
+      ${s.abilities.filter((a) => !c.abilities.includes(a)).map((a) => `<p><button data-ms-ability="${esc(a)}" style="text-align:left;width:100%">${esc(a)}</button></p>`).join('')}</section>
+    <p class="muted">${next}</p>`;
   app.onclick = (e) => {
     if (e.target.dataset.msStat) act('milestone', { stat: e.target.dataset.msStat });
     if (e.target.dataset.msAbility) act('milestone', { ability: e.target.dataset.msAbility });

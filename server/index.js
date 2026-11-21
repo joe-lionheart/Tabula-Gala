@@ -4,7 +4,7 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import QRCode from 'qrcode';
 import { networkInterfaces } from 'node:os';
-import { readFileSync, mkdirSync, writeFileSync, appendFileSync, readdirSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, appendFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Game } from './game/game.js';
@@ -34,22 +34,43 @@ function newCode() {
   return c;
 }
 
-function createGame(durationMin) {
-  const code = newCode();
-  const dir = join(DATA, `${new Date().toISOString().slice(0, 10)}_${code}`);
-  mkdirSync(dir, { recursive: true });
+function gameOptions(dir) {
   let saveTimer = null;
-  const game = new Game({
-    code, world, durationMin,
+  return {
+    world,
     moderator: createModerator(),
     persist: (g) => {
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => writeFileSync(join(dir, 'state.json'), JSON.stringify(g.snapshot(), null, 1)), 500);
     },
     log: (entry) => appendFileSync(join(dir, 'log.jsonl'), `${JSON.stringify(entry)}\n`),
-  });
+  };
+}
+
+function createGame(durationMin) {
+  const code = newCode();
+  const dir = join(DATA, `${new Date().toISOString().slice(0, 10)}_${code}`);
+  mkdirSync(dir, { recursive: true });
+  const game = new Game({ code, durationMin, ...gameOptions(dir) });
   games.set(code, game);
   return game;
+}
+
+// Offene Runden der letzten 24 Stunden nach einem Neustart zurückholen
+export function restoreGames(maxAgeMs = 24 * 3600 * 1000) {
+  const restored = [];
+  for (const name of readdirSync(DATA)) {
+    const dir = join(DATA, name);
+    const file = join(dir, 'state.json');
+    try {
+      if (Date.now() - statSync(file).mtimeMs > maxAgeMs) continue;
+      const snap = JSON.parse(readFileSync(file, 'utf8'));
+      if (!snap?.code || !snap.hostToken || snap.state?.phase === 'ended' || games.has(snap.code)) continue;
+      games.set(snap.code, Game.restore(snap, gameOptions(dir)));
+      restored.push(snap.code);
+    } catch { /* keine oder kaputte Datei: überspringen */ }
+  }
+  return restored;
 }
 
 export function buildServer() {
@@ -103,7 +124,7 @@ export function buildServer() {
       const player = host ? null : g.authPlayer(tok);
       if (!host && !player) { socket.send(JSON.stringify({ type: 'error', error: 'Unbekannter Zugang' })); return socket.close(); }
       const viewer = host ? 'host' : player.id;
-      if (player) { player.connected = true; g.changed(); }
+      if (player) { player.sockets = (player.sockets || 0) + 1; player.connected = true; g.changed(); }
 
       let pending = null;
       const sendState = () => {
@@ -115,9 +136,19 @@ export function buildServer() {
       const off = g.subscribe((msg) => {
         if (msg.type === 'state') return sendState();
         if (msg.type === 'say' || msg.type === 'cue' || msg.type === 'thinking') { if (host) safeSend(msg); if (msg.type === 'say' && !host) sendState(); return; }
-        if (msg.type === 'check_request' && msg.playerId === viewer) safeSend({ type: 'buzz' });
+        if (msg.type === 'check_request' && msg.playerId === viewer) safeSend({ type: 'buzz', kind: 'check' });
+        if (msg.type === 'buzz' && !host && (msg.all || msg.playerId === viewer)) safeSend({ type: 'buzz', kind: msg.kind });
       });
       sendState();
+
+      // Herzschlag: tote Verbindungen (Handy gesperrt, WLAN weg) nach spätestens 30 s erkennen
+      let alive = true;
+      socket.on('pong', () => { alive = true; });
+      const beat = setInterval(() => {
+        if (!alive) return socket.terminate();
+        alive = false;
+        try { socket.ping(); } catch { /* egal */ }
+      }, 15000);
 
       socket.on('message', (buf) => {
         let m;
@@ -125,7 +156,12 @@ export function buildServer() {
         const r = handle(g, viewer, host, m);
         Promise.resolve(r).then((res) => safeSend({ type: 'result', reqId: m.reqId, ...(res || { ok: true }) }));
       });
-      socket.on('close', () => { off(); if (player) { player.connected = false; g.changed(); } });
+      socket.on('close', () => {
+        clearInterval(beat);
+        off();
+        // Nur „weg“ melden, wenn kein anderes Fenster dieses Spielers mehr offen ist
+        if (player && --player.sockets <= 0) { player.sockets = 0; player.connected = false; g.changed(); }
+      });
     });
   });
 
@@ -155,6 +191,7 @@ function handle(g, viewer, host, m) {
     pause: () => g.setPaused(p.paused),
     end: () => g.endGame(),
     rest: () => g.rest(),
+    continue: () => g.continueAct(),
     utterance: () => g.utterance({ text: p.text, speakerId: p.speakerId, source: p.source || 'mic' }),
     ai: () => g.setAi(p.enabled),
     sfx: () => g.hostSfx(p.id),
@@ -171,10 +208,12 @@ function handle(g, viewer, host, m) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const restored = restoreGames();
   const app = buildServer();
   await app.listen({ port: PORT, host: '0.0.0.0' });
   const ai = createModerator();
   console.log(`\n  Tabula Gala läuft.`);
+  if (restored.length) console.log(`  Wiederhergestellt:     Runde ${restored.join(', ')} (Host-Fenster neu laden)`);
   console.log(`  Host (dieser Laptop):  http://localhost:${PORT}`);
   console.log(`  Handys im WLAN:        http://${lanAddress()}:${PORT}`);
   console.log(`  Moderator:             ${ai.kind === 'claude' ? `Claude (${ai.model})` : 'Übungsmodus (kein ANTHROPIC_API_KEY in .env)'}\n`);

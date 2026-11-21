@@ -23,7 +23,10 @@ So moderierst du:
 Antworte immer über das Werkzeug „moderate“.`;
 }
 
-export function contextMessage({ world, scene, characters, inventories, loot, hiddenLoot, enemiesInFight, transcript, minutesLeft, sceneMinutes, beds, sfx }) {
+export function contextMessage({ world, scene, characters, inventories, loot, hiddenLoot, enemiesInFight, transcript, minutesLeft, sceneMinutes, beds, sfx, path = [] }) {
+  // Vorgeschichte: welche Ausgänge die Runde gewählt hat, und was das für diese Szene heißt
+  const history = path.map((p) => `- ${p.label}`).join('\n');
+  const notes = path.map((p) => scene.pathNotes?.[`${p.sceneId}:${p.exitId}`]).filter(Boolean).join(' ');
   const chars = characters.map((c) => {
     const stats = Object.entries(c.stats).map(([k, v]) => `${STAT_LABELS[k]} ${v}`).join(', ');
     const inv = (inventories[c.id]?.items || []).map((i) => (i.qty > 1 ? `${i.name} ×${i.qty}` : i.name)).join(', ') || 'leer';
@@ -41,7 +44,7 @@ export function contextMessage({ world, scene, characters, inventories, loot, hi
     ? `KAMPF LÄUFT: ${enemiesInFight.map((e) => `${e.name} [${e.instanceId}] LP ${e.lp}/${e.lpMax}${e.defeated ? ' besiegt' : ''}`).join('; ')}`
     : 'Kein Kampf.';
 
-  return `SZENE: ${scene.title} (Akt ${scene.act})
+  return `${history ? `BISHER GEWÄHLT:\n${history}\n${notes ? `Das heißt für diese Szene: ${notes}\n` : ''}\n` : ''}SZENE: ${scene.title} (Akt ${scene.act})
 Einstieg: ${scene.intro}
 Raumanker: ${scene.anchors.join(' | ')}
 Nebenfiguren:
