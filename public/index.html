@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tabula Gala</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%23e3b45a%22/%3E%3C/svg%3E">
+</head>
+<body>
+  <main class="wrap">
+    <h1>Tabula Gala</h1>
+    <p class="muted">Das Hörspiel, in dem ihr mitspielt.</p>
+
+    <section class="card">
+      <h2>Neue Runde starten</h2>
+      <p class="muted">Dieser Laptop wird der Tisch: Er hört zu, erzählt und spielt die Klänge. Die anderen treten mit dem Handy bei.</p>
+      <label>Spieldauer in Minuten <input id="duration" type="number" value="90" min="30" max="300"></label>
+      <p><button class="primary big" id="create">Runde eröffnen</button></p>
+    </section>
+
+    <section class="card">
+      <h2>Mitspielen</h2>
+      <div class="row"><input id="code" placeholder="Code, z. B. KXPA" maxlength="4" class="grow"><button id="join">Beitreten</button></div>
+    </section>
+  </main>
+  <script type="module">
+    document.getElementById('create').onclick = async () => {
+      const durationMin = Number(document.getElementById('duration').value) || 90;
+      const r = await fetch('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ durationMin }) }).then((x) => x.json());
+      localStorage.setItem(`tg_host_${r.code}`, r.hostToken);
+      location.href = `/host/${r.code}`;
+    };
+    document.getElementById('join').onclick = () => {
+      const c = document.getElementById('code').value.trim().toUpperCase();
+      if (c) location.href = `/join/${c}`;
+    };
+  </script>
+</body>
+</html>

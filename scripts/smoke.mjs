@@ -1,0 +1,32 @@
+// Ende-zu-Ende-Probe: Server starten, Runde eröffnen, zwei Handys + Host per WebSocket, ein Spielzug.
+import { buildServer } from '../server/index.js';
+const app = buildServer();
+await app.listen({ port: 3999, host: '127.0.0.1' });
+const base = 'http://127.0.0.1:3999';
+const post = (p, b) => fetch(base + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }).then((r) => r.json());
+const s = await post('/api/sessions', { durationMin: 60 });
+const a = await post(`/api/sessions/${s.code}/join`, { name: 'Anna' });
+const b = await post(`/api/sessions/${s.code}/join`, { name: 'Ben' });
+const open = (token, label) => new Promise((res) => {
+  const ws = new WebSocket(`ws://127.0.0.1:3999/ws?code=${s.code}&token=${token}`);
+  const c = { ws, last: null, msgs: [], id: 0, wait: new Map() };
+  ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.type === 'state') c.last = m.state; else if (m.type === 'result') c.wait.get(m.reqId)?.(m); else c.msgs.push(m); };
+  c.send = (action, payload) => new Promise((r) => { const id = ++c.id; c.wait.set(id, r); ws.send(JSON.stringify({ action, payload, reqId: id })); });
+  ws.onopen = () => res(c);
+});
+const host = await open(s.hostToken), pa = await open(a.token), pb = await open(b.token);
+const stats = { kraft: 3, agilitaet: 3, wahrnehmung: 2, verstand: 2, wort: 2 };
+console.log('char A', (await pa.send('character', { name: 'Mira', concept: 'Diebin', stats, kit: 2 })).ok);
+console.log('char B', (await pb.send('character', { name: 'Bruno', concept: 'Schmied', stats, kit: 1 })).ok);
+console.log('start', (await host.send('start')).ok);
+await pa.send('speak');
+console.log('utter', (await host.send('utterance', { text: 'Ich untersuche den Kamin' })).ok);
+await new Promise((r) => setTimeout(r, 2200));
+console.log('pending check for A:', pa.last.pendingCheck?.statLabel, pa.last.pendingCheck?.dc);
+const roll = await pa.send('roll', { natural: 17 });
+console.log('roll', roll.ok, roll.result?.label);
+await new Promise((r) => setTimeout(r, 200));
+console.log('loot now:', pa.last.loot.map((l) => l.name).join(', '));
+console.log('host got say:', host.msgs.filter((m) => m.type === 'say').length, 'cues:', host.msgs.filter((m) => m.type === 'cue').map((m) => m.cue.bed || m.cue.sfx.map((x) => x.id).join('+')).join(' | '));
+console.log('player A sees DC? (own check had it)', 'B sees pending dc:', pb.last.pendingCheck?.dc);
+await app.close(); process.exit(0);

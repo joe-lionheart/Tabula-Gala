@@ -1,0 +1,123 @@
+{
+  "id": "klassische-fantasy",
+  "name": "Klassische Fantasy",
+  "adventure": {
+    "id": "nachtstueck-1",
+    "title": "Nachtstück 1: Das Licht im Moor",
+    "pitch": "Im Wirtshaus „Zum Krummen Kessel“ am Rand des Moors ist die Tochter des Wirts verschwunden. Seit drei Nächten tanzt draußen ein Licht über dem Wasser.",
+    "tone": "warm, schaurig, mit Humor; Hörspiel, nicht Regelwerk",
+    "durationMin": 90
+  },
+  "scenes": [
+    {
+      "id": "s1-wirtshaus",
+      "act": 1,
+      "title": "Zum Krummen Kessel",
+      "ambience": "tavern",
+      "intro": "Regen trommelt gegen die Butzenscheiben. Im „Krummen Kessel“ riecht es nach Rauch, nassem Wollzeug und Bier. Am Kamin sitzt Wirt Bertold und starrt ins Feuer. Seine Tochter Lene ist seit drei Tagen fort, und draußen über dem Moor tanzt nachts ein Licht.",
+      "anchors": ["der große Kamin mit dem Kesselhaken", "die Fässerreihe hinter dem Tresen", "der Händler Quast in der Ecke, der zu viel Silber zählt"],
+      "npcs": [
+        { "id": "bertold", "name": "Wirt Bertold", "voice": "tief, müde, brummig", "wants": "seine Tochter zurück", "secret": "er hat Lene verboten, den Händlerssohn zu sehen" },
+        { "id": "quast", "name": "Händler Quast", "voice": "schnell, schmeichelnd", "wants": "dass niemand ins Moor geht", "secret": "er bezahlt die Räuber im Moor für Schutz und Schweigen" }
+      ],
+      "exits": [
+        { "id": "exit_1", "label": "Der Spur ins Moor folgen", "to": "s2-moorpfad" },
+        { "id": "exit_2", "label": "Quast unter Druck setzen und die Wahrheit erfahren", "to": "s2-moorpfad" },
+        { "id": "exit_3", "label": "Den Keller durchsuchen: Lenes Versteck", "to": "s2-moorpfad" }
+      ],
+      "abortSignal": "Nach 25 Minuten drängt Bertold: „Geht jetzt, bevor das Licht erlischt.“",
+      "budgetMin": 25,
+      "enemies": ["wegelagerer"],
+      "loot": "wirtshaus",
+      "allowedSfx": ["door_creak", "coins", "glass_clink", "chair_scrape", "laugh_crowd"]
+    },
+    {
+      "id": "s2-moorpfad",
+      "act": 1,
+      "title": "Der Moorpfad",
+      "ambience": "swamp_night",
+      "intro": "Der Bohlenweg knarrt unter euren Stiefeln. Nebel kriecht über das schwarze Wasser, Frösche verstummen, wenn ihr näher kommt. Weit vorn schwebt das Licht, mal blau, mal grün.",
+      "anchors": ["ein halb versunkener Karren mit zerrissener Plane", "morsche Bohlen, unter denen es gluckert", "ein abgebrochener Wegweiser mit frischen Kratzspuren"],
+      "npcs": [
+        { "id": "irrlicht", "name": "Das Irrlicht", "voice": "flüsternd, kichernd, kindlich", "wants": "Wanderer vom Weg locken", "secret": "es gehorcht der Kapelle, nicht den Räubern" }
+      ],
+      "exits": [
+        { "id": "exit_1", "label": "Dem Licht folgen", "to": "s3-kapelle" },
+        { "id": "exit_2", "label": "Den Spuren der Räuber folgen", "to": "s3-kapelle" },
+        { "id": "exit_3", "label": "Einen gefangenen Räuber ausfragen", "to": "s3-kapelle" }
+      ],
+      "abortSignal": "Die Bohlen hinter euch versinken. Es gibt nur noch einen Weg: nach vorn zur Kapelle.",
+      "budgetMin": 30,
+      "enemies": ["moorwolf", "wegelagerer"],
+      "traps": [{ "id": "morsche_bohle", "class": "U", "severity": "leicht", "avoid": "agilitaet", "dc": 12, "spot": "wahrnehmung" }],
+      "loot": "moor",
+      "allowedSfx": ["wolf_howl", "water_splash", "wood_creak", "whisper", "trap_click"]
+    },
+    {
+      "id": "s3-kapelle",
+      "act": 1,
+      "title": "Die versunkene Kapelle",
+      "ambience": "chapel",
+      "intro": "Aus dem Moor ragt eine Kapelle, halb im Wasser, das Dach eingesunken. Drinnen flackern Fackeln. Ihr hört Stimmen, und eine davon ist jung und trotzig: Lene.",
+      "anchors": ["die schiefe Glocke, die noch an einem Seil hängt", "die Fackeln entlang der überfluteten Bänke", "der Altar, auf dem Quasts Silber in Säcken liegt"],
+      "npcs": [
+        { "id": "rotbart", "name": "Hauptmann Rotbart", "voice": "laut, gutmütig-gefährlich", "wants": "sein Silber und seine Ruhe", "secret": "er hält Lene nicht gefangen" },
+        { "id": "lene", "name": "Lene", "voice": "jung, trotzig, klug", "wants": "frei entscheiden, wen sie liebt", "secret": "sie ist freiwillig hier, mit Quasts Sohn, der von seinem Vater fliehen will" }
+      ],
+      "peripetie": "Lene wurde nicht entführt. Sie ist mit Quasts Sohn geflohen, und Quast bezahlt die Räuber, damit sie die beiden finden, nicht verstecken. Wem helft ihr jetzt?",
+      "exits": [
+        { "id": "exit_1", "label": "Lene nach Hause bringen", "to": null },
+        { "id": "exit_2", "label": "Den beiden zur Flucht verhelfen", "to": null },
+        { "id": "exit_3", "label": "Quast vor dem ganzen Dorf entlarven", "to": null }
+      ],
+      "abortSignal": "Die Glocke läutet von selbst. Das Moor steigt. Entscheidet euch jetzt.",
+      "budgetMin": 30,
+      "enemies": ["wegelagerer", "rotbart", "irrlicht"],
+      "loot": "kapelle",
+      "allowedSfx": ["bell", "torch", "water_splash", "door_creak", "crowd_gasp"]
+    }
+  ],
+  "enemies": [
+    { "id": "wegelagerer", "name": "Wegelagerer", "stufe": 1, "kompl": ["ruft Hilfe", "wirft Sand in die Augen"], "loot": "strassenraub", "sound": "enemy_grunt" },
+    { "id": "moorwolf", "name": "Moorwolf", "stufe": 1, "lp": 22, "kompl": ["reißt an der Ausrüstung", "zweiter Wolf heult in der Nähe"], "loot": null, "sound": "wolf_growl" },
+    { "id": "irrlicht", "name": "Irrlicht", "stufe": 2, "abwehr": 14, "lp": 30, "kompl": ["blendet: nächster Wurf −2", "lockt eine Figur vom Weg"], "loot": "irrlicht", "sound": "magic" },
+    { "id": "rotbart", "name": "Hauptmann Rotbart", "stufe": 2, "kompl": ["tritt den Tisch um", "pfeift seine Leute herbei"], "loot": "rotbart", "sound": "enemy_shout" }
+  ],
+  "items": [
+    { "id": "kurzschwert", "name": "Kurzschwert", "w": 1, "h": 2, "weapon": { "damage": "1W8+1", "kind": "klinge", "stat": "kraft" } },
+    { "id": "streitkolben", "name": "Streitkolben", "w": 1, "h": 2, "weapon": { "damage": "1W8+2", "kind": "stumpf", "stat": "kraft" } },
+    { "id": "dolch", "name": "Dolch", "w": 1, "h": 1, "weapon": { "damage": "1W6+1", "kind": "klinge", "stat": "agilitaet" } },
+    { "id": "kurzbogen", "name": "Kurzbogen", "w": 1, "h": 3, "weapon": { "damage": "1W8", "kind": "bogen", "stat": "agilitaet" } },
+    { "id": "knueppel", "name": "Knüppel", "w": 1, "h": 2, "weapon": { "damage": "1W6+2", "kind": "stumpf", "stat": "kraft" } },
+    { "id": "heiltrank", "name": "Heiltrank", "w": 1, "h": 1, "stack": true, "use": { "heal": 20 } },
+    { "id": "verband", "name": "Verband", "w": 1, "h": 1, "stack": true, "use": { "heal": 10, "cures": "Blutung" } },
+    { "id": "laterne", "name": "Laterne", "w": 1, "h": 1, "effect": "Licht im Nebel: Wahrnehmung im Moor DC −2" },
+    { "id": "seil", "name": "Seil (10 m)", "w": 2, "h": 1, "effect": "Klettern und Retten aus dem Moor DC −2" },
+    { "id": "silberbeutel", "name": "Silberbeutel", "w": 1, "h": 1, "stack": true, "value": 10 },
+    { "id": "quasts_brief", "name": "Quasts Brief", "w": 1, "h": 1, "effect": "Beweis: Quast bezahlt die Räuber" },
+    { "id": "lenes_band", "name": "Lenes Haarband", "w": 1, "h": 1, "effect": "Spur: Lene ging freiwillig" },
+    { "id": "irrlichtglas", "name": "Irrlicht im Glas", "w": 1, "h": 1, "effect": "einmal: eine Szene lang Licht ohne Laterne" },
+    { "id": "rotbarts_horn", "name": "Rotbarts Horn", "w": 2, "h": 1, "effect": "ruft die Räuber; sie gehorchen einmal" },
+    { "id": "lederpanzer", "name": "Lederpanzer", "w": 2, "h": 2, "effect": "Klasse K leicht: −2 Schaden" }
+  ],
+  "lootTables": {
+    "wirtshaus": [{ "item": "laterne", "qty": 1 }, { "item": "seil", "qty": 1 }, { "item": "heiltrank", "qty": 2 }, { "item": "quasts_brief", "qty": 1, "hidden": true }],
+    "moor": [{ "item": "verband", "qty": 2 }, { "item": "kurzbogen", "qty": 1 }, { "item": "lenes_band", "qty": 1, "hidden": true }, { "item": "silberbeutel", "qty": 1 }],
+    "kapelle": [{ "item": "silberbeutel", "qty": 3 }, { "item": "heiltrank", "qty": 1 }, { "item": "lederpanzer", "qty": 1 }],
+    "strassenraub": [{ "item": "dolch", "qty": 1 }, { "item": "silberbeutel", "qty": 1 }],
+    "irrlicht": [{ "item": "irrlichtglas", "qty": 1 }],
+    "rotbart": [{ "item": "rotbarts_horn", "qty": 1 }, { "item": "silberbeutel", "qty": 2 }]
+  },
+  "startKit": ["kurzschwert", "heiltrank"],
+  "startKitChoices": [["kurzschwert"], ["streitkolben"], ["dolch", "verband"], ["knueppel", "verband"]],
+  "abilities": [
+    "Zäh: Zustände ticken bei dir halbiert.",
+    "Falkenauge: einmal pro Szene etwas Verborgenes sehen ohne Probe.",
+    "Händlerzunge: Preise und Bestechungen −20 %.",
+    "Flinke Finger: einmal pro Szene einen Gegenstand aus dem Loot nehmen, ohne dass es jemand merkt.",
+    "Feldscher: Heiltränke heilen bei dir +10.",
+    "Schildwall: einmal pro Szene einen Treffer für einen Mitspieler nehmen.",
+    "Moorkind: Fallen im Moor siehst du immer.",
+    "Bärenstimme: Einschüchtern mit Kraft statt Wort."
+  ]
+}

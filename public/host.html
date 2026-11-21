@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tabula Gala · Tisch</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%23e3b45a%22/%3E%3C/svg%3E">
+</head>
+<body>
+  <main class="wrap wide">
+    <div class="row" style="justify-content: space-between">
+      <h1>Tabula Gala <small class="muted" id="title"></small></h1>
+      <div class="row">
+        <span class="pill" id="net">…</span>
+        <span class="pill" id="clock"></span>
+        <button class="primary" id="unlock">Ton &amp; Stimme einschalten</button>
+      </div>
+    </div>
+
+    <div class="grid3">
+      <!-- links: Runde -->
+      <section>
+        <div class="card" id="lobby">
+          <h2>Beitreten</h2>
+          <div class="code" id="code"></div>
+          <div class="qr" id="qr"></div>
+          <p class="muted" id="url"></p>
+        </div>
+        <div class="card">
+          <h2>Am Tisch</h2>
+          <div id="players"></div>
+          <div class="row" style="margin-top:.6rem">
+            <button id="btnCreation">Figuren bauen</button>
+            <button class="primary" id="btnStart">Spiel starten</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Moderator</h2>
+          <div id="ai"></div>
+          <div class="row" style="margin-top:.5rem">
+            <button id="btnAi">KI an/aus</button>
+            <button id="btnModerate">Jetzt antworten</button>
+          </div>
+          <label style="margin-top:.6rem;display:block">Stimme <select id="voice"></select></label>
+          <label>Tempo <input id="rate" type="range" min="0.8" max="1.2" step="0.05" value="1"></label>
+        </div>
+      </section>
+
+      <!-- Mitte: Erzählung -->
+      <section>
+        <div class="card">
+          <div class="row" style="justify-content: space-between">
+            <h2 id="sceneTitle">Lobby</h2>
+            <span class="thinking hidden" id="thinking">Moderator denkt …</span>
+          </div>
+          <div class="row" style="margin-bottom:.6rem">
+            <button id="btnMic">Tisch hört zu: aus</button>
+            <span class="pill" id="micState">aus</span>
+            <span class="pill" id="speaker"></span>
+          </div>
+          <div class="interim" id="interim"></div>
+          <div class="feed" id="feed"></div>
+          <div class="row" style="margin-top:.6rem">
+            <input id="utter" class="grow" placeholder="Was am Tisch gesagt wurde (falls das Mikro nicht hört)">
+            <select id="utterWho"></select>
+            <button id="btnUtter">Senden</button>
+          </div>
+          <div class="row" style="margin-top:.4rem">
+            <input id="hostSay" class="grow" placeholder="Selbst etwas erzählen lassen">
+            <button id="btnSay">Vorlesen</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- rechts: Szene, Kampf, Klang -->
+      <section>
+        <div class="card">
+          <h3>Szene</h3>
+          <div id="scene" class="muted">–</div>
+          <div id="exits" class="row" style="margin-top:.5rem"></div>
+          <div class="row" style="margin-top:.5rem">
+            <button id="btnPause">Pause</button>
+            <button id="btnRest">Rast (+40 LP)</button>
+            <button class="danger" id="btnEnd">Abend beenden</button>
+          </div>
+        </div>
+        <div class="card hidden" id="checkCard"><h3>Probe läuft</h3><div id="check"></div></div>
+        <div class="card hidden" id="combatCard"><h3>Kampf</h3><div id="combat"></div><button id="btnEndCombat">Kampf beenden</button></div>
+        <div class="card"><h3>Loot</h3><div id="loot" class="muted">–</div></div>
+        <div class="card">
+          <h3>Klang</h3>
+          <label>Teppich <input id="volBed" type="range" min="0" max="1" step="0.05" value="1"></label>
+          <label>Effekte <input id="volSfx" type="range" min="0" max="1" step="0.05" value="1"></label>
+          <div class="sfxgrid" id="beds" style="margin:.4rem 0"></div>
+          <details><summary class="muted">Effekte von Hand</summary><div class="sfxgrid" id="sfx"></div></details>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="/js/host.js"></script>
+</body>
+</html>
