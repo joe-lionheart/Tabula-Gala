@@ -118,7 +118,7 @@ function renderCreation() {
   const s = state;
   const used = Object.values(draft.stats).reduce((a, b) => a + b, 0);
   app.innerHTML = `
-    <h1>Deine Figur</h1>
+    <h1>Figur erstellen</h1>
     <section class="card">
       <input id="cname" placeholder="Name der Figur" maxlength="40" value="${esc(draft.name)}">
       <p><input id="concept" placeholder="In einem Satz: wer bist du? (z. B. „Diebin mit Herz“)" maxlength="140" value="${esc(draft.concept)}"></p>
@@ -149,6 +149,9 @@ function renderCreation() {
   app.onchange = (e) => { if (e.target.name === 'kit') draft.kit = Number(e.target.value); };
   $('#done').onclick = async () => { keep(); app.onclick = null; await act('character', draft); };
 }
+
+const info = (itemId) => state.itemInfo?.[itemId] || {};
+const icon = (itemId, cls = '') => { const n = info(itemId).icon; return n ? `<i class="ico ${cls}" style="--ico:url(/icons/${n}.svg)"></i>` : ''; };
 
 const hint = (k) => ({ kraft: 'Nahkampf, heben, aushalten', agilitaet: 'ausweichen, klettern, schleichen, Bogen', wahrnehmung: 'entdecken, Fallen, Spuren', verstand: 'Rätsel, Wissen, Magie', wort: 'überzeugen, lügen, handeln' }[k]);
 
@@ -201,7 +204,8 @@ function renderPlay() {
   const myCheck = s.pendingCheck && s.pendingCheck.playerId === myId ? s.pendingCheck : null;
   const speaking = s.activeSpeaker === myId;
   const inv = s.me.inventory;
-  const weapons = inv.items.filter((i) => /schwert|kolben|dolch|bogen|knüppel/i.test(i.name));
+  const weapons = inv.items.filter((i) => info(i.itemId).weapon).sort((x, y) => (y.inHand ? 1 : 0) - (x.inHand ? 1 : 0));
+  const ammoLeft = (w) => { const a = info(w.itemId).ammo; return a ? inv.items.filter((i) => i.itemId === a).reduce((n, i) => n + i.qty, 0) : null; };
 
   app.innerHTML = `
     ${myCheck ? `<section class="card alert">
@@ -220,7 +224,7 @@ function renderPlay() {
         <b class="grow">${esc(e.name)}</b><div class="lp" style="width:80px"><i style="width:${(100 * e.lp) / e.lpMax}%"></i></div>
         ${e.defeated ? '' : `<button data-target="${e.instanceId}" class="${attackTarget === e.instanceId ? 'primary' : ''}">Angreifen</button>`}</div>`).join('')}
       ${attackTarget ? `
-        <label>Womit? <select id="weapon">${weapons.map((w) => `<option value="${w.uid}" ${attackWeapon === w.uid ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}<option value="">Fäuste</option></select></label>
+        <label>Womit? <select id="weapon">${weapons.map((w) => { const n = ammoLeft(w); return `<option value="${w.uid}" ${attackWeapon === w.uid ? 'selected' : ''}>${esc(w.name)}${w.inHand ? ' (in der Hand)' : ''}${n !== null ? ` · ${n} Pfeile` : ''}</option>`; }).join('')}<option value="">Fäuste</option></select></label>
         ${diceHtml('attack')}` : ''}
     </section>` : ''}
 
@@ -231,12 +235,12 @@ function renderPlay() {
     </section>` : ''}
 
     ${s.loot.length ? `<section class="card loot ${s.loot.some((l) => !seenLoot.has(l.lootId)) ? 'fresh' : ''}"><h3>Hier liegt – wer zuerst tippt</h3>
-      ${s.loot.map((l) => `<div class="row" style="margin-bottom:.35rem"><span class="grow">${esc(l.name)}${l.qty > 1 ? ` ×${l.qty}` : ''}</span><button class="primary" data-take="${l.lootId}">Nehmen</button></div>`).join('')}</section>` : ''}
+      ${s.loot.map((l) => `<div class="row" style="margin-bottom:.35rem"><span class="grow">${icon(l.itemId)}${esc(l.name)}${l.qty > 1 ? ` ×${l.qty}` : ''}</span><button class="primary" data-take="${l.lootId}">Nehmen</button></div>`).join('')}</section>` : ''}
 
     ${s.shop ? `<section class="card">
       <h3>${esc(s.shop.npcName)} verkauft</h3>
       ${s.shop.deal ? `<p class="pill ${s.shop.deal.tier === 'abgelehnt' ? 'off' : 'on'}">${esc(s.shop.deal.label)}${s.shop.deal.discount ? ` · −${Math.round(s.shop.deal.discount * 100)} %` : ''}</p>` : '<p class="muted">Verhandeln lohnt sich: einfach mit der Figur reden.</p>'}
-      ${s.shop.items.map((i) => `<div class="row" style="margin-bottom:.3rem"><span class="grow">${esc(i.name)}</span>
+      ${s.shop.items.map((i) => `<div class="row" style="margin-bottom:.3rem"><span class="grow">${icon(i.itemId)}${esc(i.name)}</span>
         <span class="${i.price !== null && i.price < i.list ? 'pill on' : 'muted'}">${i.price === null ? '–' : `${i.price} Silber`}${i.price !== null && i.price < i.list ? ` <s>${i.list}</s>` : ''}</span>
         <button data-buy="${i.itemId}" ${i.price === null || i.price > (s.silver ?? 0) ? 'disabled' : ''}>Kaufen</button></div>`).join('')}
     </section>` : ''}
@@ -262,7 +266,7 @@ function renderPlay() {
     const d = e.target.dataset;
     if (d.take) { const r = await act('take', { lootId: d.take }); if (r.ok) toast('Deins!'); return; }
     if (d.buy) { const r = await act('buy', { itemId: d.buy }); if (r.ok) toast('Gekauft.'); return; }
-    if (d.target) { attackTarget = d.target; attackWeapon = attackWeapon ?? weapons[0]?.uid ?? ''; return render(); }
+    if (d.target) { attackTarget = d.target; attackWeapon = weapons.find((w) => w.inHand)?.uid ?? weapons[0]?.uid ?? ''; return render(); }
     if (d.die) {
       const natural = d.die === 'auto' ? undefined : Number(d.die);
       if (d.mode === 'roll') return rollOnce('roll', { natural });
@@ -273,6 +277,8 @@ function renderPlay() {
     if (d.use) { await act('use', { uid: d.use, target: $('#useTarget')?.value }); selectedUid = null; return; }
     if (d.give) { const to = $('#giveTo').value; if (to) await act('give', { uid: d.give, to }); selectedUid = null; return; }
     if (d.drop) { await act('drop', { uid: d.drop }); selectedUid = null; }
+    if (d.equip) { await act('equip', { uid: d.equip }); selectedUid = null; return; }
+    if (d.unequip) { await act('unequip', { uid: d.unequip }); selectedUid = null; }
   };
   if (!s.combat) attackTarget = null;
   // Neue Probe: nach oben scrollen, damit niemand sie unter dem Rucksack sucht
@@ -289,19 +295,24 @@ function diceHtml(mode) {
 }
 
 function bagHtml(inv) {
+  const held = inv.items.find((i) => i.inHand);
+  const hand = `<div class="hand row"><span class="muted">In der Hand</span>
+    ${held ? `<div class="item ${selectedUid === held.uid ? 'sel' : ''}" data-uid="${held.uid}">${icon(held.itemId)}<span>${esc(held.name)}</span></div>` : '<span class="muted">nichts (Fäuste)</span>'}</div>`;
   const cells = [];
   for (let y = 0; y < inv.h; y++) for (let x = 0; x < inv.w; x++) cells.push(`<div class="cell" data-cell="${x},${y}" style="grid-column:${x + 1};grid-row:${y + 1}"></div>`);
-  const items = inv.items.map((i) => `<div class="item ${selectedUid === i.uid ? 'sel' : ''}" data-uid="${i.uid}" style="grid-column:${i.x + 1}/span ${i.w};grid-row:${i.y + 1}/span ${i.h}">${esc(i.name)}${i.qty > 1 ? ` ×${i.qty}` : ''}</div>`);
-  return `<div class="bag" style="grid-template-columns:repeat(${inv.w},1fr)">${cells.join('')}${items.join('')}</div>`;
+  const items = inv.items.filter((i) => !i.inHand).map((i) => `<div class="item ${selectedUid === i.uid ? 'sel' : ''}" data-uid="${i.uid}" style="grid-column:${i.x + 1}/span ${i.w};grid-row:${i.y + 1}/span ${i.h}">${icon(i.itemId)}<span>${esc(i.name)}${i.qty > 1 ? ` ×${i.qty}` : ''}</span></div>`);
+  return `${hand}<div class="bag" style="grid-template-columns:repeat(${inv.w},1fr)">${cells.join('')}${items.join('')}</div>`;
 }
 
 function itemActions(inv) {
   const it = inv.items.find((i) => i.uid === selectedUid);
   if (!it) { selectedUid = null; return ''; }
   const others = state.characters.filter((c) => c.playerId !== state.me.character.playerId);
-  const usable = /trank|verband/i.test(it.name);
+  const usable = info(it.itemId).use;
+  const weapon = info(it.itemId).weapon;
   return `<div class="card" style="margin-top:.6rem;background:var(--panel2)">
-    <b>${esc(it.name)}</b>
+    <b>${icon(it.itemId)}${esc(it.name)}</b>${info(it.itemId).effect ? `<br><small class="muted">${esc(info(it.itemId).effect)}</small>` : ''}
+    ${weapon ? `<div class="row" style="margin-top:.4rem">${it.inHand ? `<button data-unequip="${it.uid}">In den Rucksack</button>` : `<button class="primary" data-equip="${it.uid}">In die Hand</button>`}</div>` : ''}
     ${usable ? `<div class="row" style="margin-top:.4rem"><select id="useTarget" class="grow"><option value="">für mich</option>${others.map((c) => `<option value="${c.playerId}">für ${esc(c.name)}</option>`).join('')}</select><button class="primary" data-use="${it.uid}">Benutzen</button></div>` : ''}
     ${others.length ? `<div class="row" style="margin-top:.4rem"><select id="giveTo" class="grow">${others.map((c) => `<option value="${c.playerId}">an ${esc(c.name)}</option>`).join('')}</select><button data-give="${it.uid}">Geben</button></div>` : ''}
     <div class="row" style="margin-top:.4rem"><button class="danger" data-drop="${it.uid}">Ablegen</button><small class="muted">Oder ein freies Feld antippen zum Verschieben.</small></div>

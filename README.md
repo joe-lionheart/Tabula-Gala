@@ -8,7 +8,7 @@ Interner Projektname: Tischleiter. Regeln: Kernmechanik v0.5 (Projektwissen, Dat
 
 1. Der **Host-Laptop** steht in der Tischmitte. Er hört zu (Mikro), erzählt (Lautsprecher) und spielt die Klänge.
 2. Alle anderen scannen den **QR-Code** mit dem Handy. Keine App, keine Installation.
-3. Jede:r baut eine Figur (12 Punkte auf 5 Werte, Ausrüstung wählen).
+3. Jede:r erstellt am Handy eine Figur (12 Punkte auf 5 Werte, Ausrüstung wählen).
 4. Der Moderator eröffnet die Szene. Ihr sprecht einfach.
    Wer anfängt zu reden, tippt **einmal kurz „Ich spreche“** auf dem Handy, nicht festhalten. Ist unklar, wer gesprochen hat, fragt der Moderator nach.
 5. Verlangt der Moderator eine Probe, vibriert das Handy der Person. Echten W20 werfen und die Zahl tippen, oder das Handy würfeln lassen.

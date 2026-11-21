@@ -119,7 +119,7 @@ function render() {
 
   $('#players').innerHTML = s.players.map((p) => {
     const c = s.characters.find((x) => x.playerId === p.id);
-    const lp = c ? `<div class="lp"><i style="width:${(100 * c.lp) / c.lpMax}%"></i></div><small>${c.down ? 'AM BODEN' : `${c.lp}/${c.lpMax} LP`}${c.conditions.length ? ` · ${esc(c.conditions.join(', '))}` : ''}</small>` : '<small class="muted">baut noch …</small>';
+    const lp = c ? `<div class="lp"><i style="width:${(100 * c.lp) / c.lpMax}%"></i></div><small>${c.down ? 'AM BODEN' : `${c.lp}/${c.lpMax} LP`}${c.conditions.length ? ` · ${esc(c.conditions.join(', '))}` : ''}</small>` : '<small class="muted">erstellt die Figur …</small>';
     return `<div style="margin-bottom:.55rem"><div class="row"><b>${esc(c?.name || p.name)}</b><small class="muted">${esc(p.name)}${c?.concept ? ` · ${esc(c.concept)}` : ''}</small><span class="pill ${p.connected ? 'on' : 'off'}">${p.connected ? 'da' : 'weg'}</span></div>${lp}</div>`;
   }).join('') || '<p class="muted">Noch niemand. QR-Code scannen lassen.</p>';
 

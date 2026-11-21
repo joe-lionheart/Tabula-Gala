@@ -3,6 +3,7 @@
 // bei Fehlern auf das Testabenteuer zurück. Nie wird ein ungeprüftes Abenteuer gespielt.
 import { validateWorld } from '../content/validate.js';
 import { allBeds, allSfx } from '../audio/director.js';
+import { knownIcons } from '../content/validate.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -54,7 +55,8 @@ Szenenfelder (Beispiel einer echten Szene folgt): id, act, arc, title, ambience,
 
 Katalog, der schon da ist (nicht neu anlegen, gern benutzen): ${catalog}
 Gegner, die schon da sind: ${foes}
-Neue Gegenstände: {id, name, w, h (1–3), effect} oder Waffe {weapon: {damage wie "1W8+1", kind: klinge|stumpf|bogen|faust, stat: kraft|agilitaet}} oder Heilmittel {use: {heal: 10–30}, stack: true}.
+Neue Gegenstände: {id, name, w, h (1–3), icon, effect} oder Waffe {weapon: {damage wie "1W8+1", kind: klinge|stumpf|bogen|faust, stat: kraft|agilitaet, ammo?: "pfeile"}} (Kurzwaffen 1 Feld, Langwaffen 2 Felder, nie mehr) oder Heilmittel {use: {heal: 10–30}, stack: true}. Bögen verbrauchen Pfeile; legt Pfeile in Loot und Laden ({item: "pfeile", price, qty}). Keine Feuerwaffen.
+Icons (Feld icon, nur aus dieser Liste): ${knownIcons().join(', ')}.
 Neue Gegner: {id, name, stufe 1–4, kompl: [2 Komplikationen], loot, sound}.
 Klangteppiche (ambience): ${allBeds().join(', ')}. Erlaubte Klänge: ${allSfx().join(', ')}.
 

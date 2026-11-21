@@ -4,7 +4,7 @@ import { cryptoRng } from '../engine/rng.js';
 import { resolveCheck } from '../engine/check.js';
 import { createCharacter, applyLp, applyMilestone } from '../engine/character.js';
 import { combatExchange, makeEnemy, heal, rollEventDamage, payPrice, tickConditions, rescueRoll } from '../engine/events.js';
-import { createInventory, addItem, moveItem, removeItem } from '../engine/inventory.js';
+import { createInventory, addItem, moveItem, removeItem, equip, unequip, inHand } from '../engine/inventory.js';
 import { STATS, STAT_LABELS } from '../engine/rules.js';
 import * as sound from '../audio/director.js';
 import { validateJudgment } from '../llm/contract.js';
@@ -159,7 +159,11 @@ export class Game {
     const inv = createInventory();
     this.state.inventories[ch.id] = inv;
     const choice = this.world.startKitChoices[Number(kit)] || this.world.startKitChoices[0];
-    for (const id of [...choice, 'heiltrank']) this.giveItem(ch, id, 1);
+    for (const entry of [...choice, 'heiltrank']) {
+      const [id, n] = String(entry).split('*');
+      const r = this.giveItem(ch, id, Number(n) || 1);
+      if (r.ok && this.itemDef(id)?.weapon && !inHand(inv)) equip(inv, r.uid);
+    }
     if (this.world.startSilver && this.itemDef('silberbeutel')) this.giveItem(ch, 'silberbeutel', this.world.startSilver);
     this.log('character', { playerId, character: ch, late });
     if (late) {
@@ -558,9 +562,21 @@ export class Game {
     if (!ch || ch.down) return { ok: false, error: 'Deine Figur kann gerade nicht kämpfen' };
     const enemy = combat.enemies.find((e) => e.instanceId === enemyId && !e.defeated) || combat.enemies.find((e) => !e.defeated);
     if (!enemy) return { ok: false, error: 'Kein Gegner mehr' };
-    const invItem = this.state.inventories[ch.id].items.find((i) => i.uid === weaponUid);
+    const inv = this.state.inventories[ch.id];
+    let invItem = weaponUid === '' ? null : weaponUid ? inv.items.find((i) => i.uid === weaponUid) : inHand(inv);
+    if (invItem && !this.itemDef(invItem.itemId)?.weapon) invItem = null;
+    if (invItem && !invItem.inHand) {
+      const sw = equip(inv, invItem.uid);
+      if (!sw.ok) return sw;
+      this.feed('Tisch', `${ch.name} nimmt ${invItem.name} in die Hand.`, 'system');
+    }
     const def = invItem ? this.itemDef(invItem.itemId) : null;
     const weapon = def?.weapon ? { name: def.name, ...def.weapon } : { name: 'Fäuste', damage: '1W6', kind: 'faust', stat: 'kraft' };
+    if (weapon.ammo) {
+      const pile = inv.items.find((i) => i.itemId === weapon.ammo);
+      if (!pile) return { ok: false, error: `Keine ${this.itemDef(weapon.ammo)?.name || 'Munition'} mehr. Nimm eine andere Waffe.` };
+      removeItem(inv, pile.uid, 1);
+    }
     const result = combatExchange({ character: ch, stat: weapon.stat, enemy, weapon, natural }, this.rng);
     this.cue(sound.exchangeCue(result));
     this.log('attack', { playerId, enemy: enemy.instanceId, weapon, result });
@@ -601,6 +617,23 @@ export class Game {
     this.log('loot', { playerId, item: l });
     this.changed();
     return { ok: true };
+  }
+
+  equipItem(playerId, uid) {
+    const ch = this.charOf(playerId);
+    const inv = ch && this.state.inventories[ch.id];
+    const it = inv?.items.find((i) => i.uid === uid);
+    if (!it || !this.itemDef(it.itemId)?.weapon) return { ok: false, error: 'Nur Waffen kommen in die Hand' };
+    const r = equip(inv, uid);
+    if (r.ok) this.changed();
+    return r;
+  }
+
+  unequipItem(playerId, uid) {
+    const ch = this.charOf(playerId);
+    const r = unequip(this.state.inventories[ch.id], uid);
+    if (r.ok) this.changed();
+    return r;
   }
 
   moveItem(playerId, uid, x, y) {
@@ -784,7 +817,7 @@ export class Game {
     return {
       npc: shop.npc, npcName: npc?.name || shop.npc,
       deal: deal ? { tier: deal.tier, label: deal.label, discount: deal.discount } : null,
-      items: shop.items.map((e) => ({ itemId: e.item, name: this.itemDef(e.item)?.name || e.item, list: e.price, price: priceFor(e.price, deal) })),
+      items: shop.items.map((e) => ({ itemId: e.item, name: `${this.itemDef(e.item)?.name || e.item}${e.qty > 1 ? ` ×${e.qty}` : ''}`, qty: e.qty || 1, list: e.price, price: priceFor(e.price, deal) })),
     };
   }
 
@@ -795,7 +828,7 @@ export class Game {
     if (!ch || !offer) return { ok: false, error: 'Gibt es hier nicht' };
     if (offer.price === null) return { ok: false, error: `${shop.npcName} will dir heute nichts verkaufen.` };
     if (this.silverOf(ch) < offer.price) return { ok: false, error: `Zu wenig Silber (${this.silverOf(ch)} von ${offer.price})` };
-    const added = this.giveItem(ch, itemId, 1);
+    const added = this.giveItem(ch, itemId, offer.qty || 1);
     if (!added.ok) return { ok: false, error: 'Kein Platz im Rucksack' };
     let rest = offer.price;
     const inv = this.state.inventories[ch.id];
@@ -859,7 +892,8 @@ export class Game {
       milestonesPending: s.milestonesOpen.length,
       nextScene: s.phase === 'interlude' ? { title: this.world.scenes[s.nextSceneIndex]?.title, act: this.world.scenes[s.nextSceneIndex]?.act } : null,
       abilities: this.world.abilities,
-      startKitChoices: this.world.startKitChoices.map((c) => c.map((id) => this.itemDef(id)?.name).join(' + ')),
+      itemInfo: Object.fromEntries(this.world.items.map((i) => [i.id, { icon: i.icon || null, weapon: Boolean(i.weapon), ammo: i.weapon?.ammo || null, use: Boolean(i.use), effect: i.effect || null }])),
+      startKitChoices: this.world.startKitChoices.map((c) => c.map((e) => { const [id, n] = String(e).split('*'); return `${this.itemDef(id)?.name}${n ? ` ×${n}` : ''}`; }).join(' + ')),
       stats: STATS.map((k) => ({ key: k, label: STAT_LABELS[k] })),
       ai: isHost ? { ...s.ai } : { enabled: s.ai.enabled, busy: s.ai.busy },
     };

@@ -153,3 +153,41 @@ test('Ganzer Bogen: zwei Aktpausen, Schlüssel öffnet Quasts Kiste, Ende mit Au
   assert.equal(g.state.phase, 'ended');
   assert.ok(events.filter((e) => e.type === 'say').some((e) => /Glocke, diesmal richtig/.test(e.text)));
 });
+
+test('Handplatz: Startwaffe liegt in der Hand und belegt keinen Rucksackplatz; Wechsel per Angriff', () => {
+  const { g, a } = table();
+  const inv = g.state.inventories[g.charOf(a).id];
+  const dagger = inv.items.find((i) => i.itemId === 'dolch');
+  assert.equal(dagger.inHand, true);
+  g.giveItem(g.charOf(a), 'kurzschwert', 1);
+  const sword = inv.items.find((i) => i.itemId === 'kurzschwert');
+  assert.equal(sword.inHand, undefined);
+  g.startCombat(['wegelagerer']);
+  const foe = g.state.combat.enemies[0];
+  assert.ok(g.attack(a, { enemyId: foe.instanceId, weaponUid: sword.uid, natural: 15 }).ok);
+  assert.equal(sword.inHand, true);                       // Schwert jetzt in der Hand
+  assert.equal(dagger.inHand, false);                     // Dolch zurück in den Rucksack
+  assert.ok(dagger.x >= 0);
+  assert.ok(g.unequipItem(a, sword.uid).ok);
+  assert.ok(g.equipItem(a, sword.uid).ok);
+  assert.equal(g.equipItem(a, inv.items.find((i) => i.itemId === 'verband').uid).ok, false);   // nur Waffen
+});
+
+test('Pfeile: Bogen verbraucht einen Pfeil pro Schuss, ohne Pfeile kein Schuss', () => {
+  const g = new Game({ code: 'BOGEN', world: load(), moderator: mockModerator(), rng: seededRng(2) });
+  const p = g.join('Pia');
+  g.createCharacter(p.playerId, { name: 'Wren', stats, kit: 4 });
+  g.startGame(); clearTimeout(g.quietTimer);
+  const inv = g.state.inventories[g.charOf(p.playerId).id];
+  assert.equal(inv.items.find((i) => i.inHand).itemId, 'kurzbogen');
+  const arrows = () => inv.items.find((i) => i.itemId === 'pfeile')?.qty ?? 0;
+  assert.equal(arrows(), 10);
+  g.startCombat(['rotbart']);
+  const foe = g.state.combat.enemies[0];
+  g.attack(p.playerId, { enemyId: foe.instanceId, natural: 2 });
+  assert.equal(arrows(), 9);
+  inv.items = inv.items.filter((i) => i.itemId !== 'pfeile');
+  const r = g.attack(p.playerId, { enemyId: foe.instanceId, natural: 15 });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /Keine Pfeile/);
+});

@@ -2,6 +2,17 @@
 // und für vom Moderator erzeugte Abenteuer. Harte Fehler blockieren, Kleinigkeiten werden repariert.
 import { STATS } from '../engine/rules.js';
 import { knownBed, knownSfx } from '../audio/director.js';
+import { readdirSync } from 'node:fs';
+
+// Icons von game-icons.net (CC BY 3.0), siehe public/icons/CREDITS.md
+let iconCache = null;
+export function knownIcons() {
+  if (!iconCache) {
+    try { iconCache = readdirSync(new URL('../../public/icons/', import.meta.url)).filter((f) => f.endsWith('.svg')).map((f) => f.slice(0, -4)); }
+    catch { iconCache = []; }
+  }
+  return iconCache;
+}
 
 const WEAPON_KINDS = ['klinge', 'stumpf', 'bogen', 'faust'];
 const EXIT_IDS = ['exit_1', 'exit_2', 'exit_3'];
@@ -31,6 +42,11 @@ export function validateWorld(world) {
       if (!/^\d+W\d+(\+\d+)?$/.test(it.weapon.damage || '')) err(`${it.id}: Schaden wie 1W8+1 angeben`);
     }
     if (it.use && !isInt(it.use.heal, 1, 60)) err(`${it.id}: Heilung 1–60`);
+    if (it.icon && !knownIcons().includes(it.icon)) { fixes.push(`${it.id}: Icon ${it.icon} unbekannt, entfernt`); delete it.icon; }
+  }
+  for (const it of world.items || []) {
+    if (it.weapon?.ammo && !items.get(it.weapon.ammo)?.stack) err(`${it.id}: Munition ${it.weapon.ammo} fehlt oder ist nicht stapelbar`);
+    if (it.weapon && (it.w ?? 1) * (it.h ?? 1) > 2) err(`${it.id}: Waffen belegen höchstens 2 Felder`);
   }
   if (!items.has('silberbeutel') && world.startSilver) err('startSilver braucht den Gegenstand silberbeutel');
 
@@ -45,7 +61,7 @@ export function validateWorld(world) {
     if (e.loot && !tables[e.loot]) err(`${e.id}: Loot-Tabelle ${e.loot} fehlt`);
     if (e.sound && !knownSfx(e.sound)) { fixes.push(`${e.id}: Klang ${e.sound} unbekannt, entfernt`); delete e.sound; }
   }
-  for (const choice of world.startKitChoices || []) for (const id of choice) if (!items.has(id)) err(`Startausrüstung: ${id} unbekannt`);
+  for (const choice of world.startKitChoices || []) for (const e of choice) { const id = String(e).split('*')[0]; if (!items.has(id)) err(`Startausrüstung: ${id} unbekannt`); }
   if (!Array.isArray(world.startKitChoices) || !world.startKitChoices.length) err('startKitChoices fehlen');
   if (!Array.isArray(world.abilities) || world.abilities.length < 4) err('mindestens 4 Fähigkeiten');
 
@@ -85,7 +101,7 @@ export function validateWorld(world) {
     }
     if (s.shop) {
       if (!npcIds.has(s.shop.npc)) err(`${at}: Laden gehört keiner Nebenfigur der Szene`);
-      for (const e of s.shop.items || []) if (!items.has(e.item) || !isInt(e.price, 0, 50)) err(`${at}: Ladenartikel ${e.item} unbekannt oder Preis ungültig`);
+      for (const e of s.shop.items || []) if (!items.has(e.item) || !isInt(e.price, 0, 50) || (e.qty !== undefined && !isInt(e.qty, 1, 20))) err(`${at}: Ladenartikel ${e.item} unbekannt oder Preis/Menge ungültig`);
     }
   }
   // Wege: jede Szene erreichbar, Ziele existieren, Akte laufen nicht rückwärts, es gibt ein Ende

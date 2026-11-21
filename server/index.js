@@ -178,6 +178,8 @@ function handle(g, viewer, host, m) {
     attack: () => g.attack(viewer, p),
     take: () => g.takeLoot(viewer, p.lootId),
     move: () => g.moveItem(viewer, p.uid, p.x, p.y),
+    equip: () => g.equipItem(viewer, p.uid),
+    unequip: () => g.unequipItem(viewer, p.uid),
     drop: () => g.dropItem(viewer, p.uid),
     give: () => g.giveTo(viewer, p.uid, p.to),
     use: () => g.useItem(viewer, p.uid, p.target),

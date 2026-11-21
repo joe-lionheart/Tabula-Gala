@@ -74,6 +74,7 @@
           {"item": "kurzschwert", "price": 3},
           {"item": "streitkolben", "price": 3},
           {"item": "kurzbogen", "price": 3},
+          {"item": "pfeile", "price": 1, "qty": 5},
           {"item": "lederpanzer", "price": 4},
           {"item": "heiltrank", "price": 1},
           {"item": "verband", "price": 1},
@@ -406,35 +407,94 @@
     }
   ],
   "items": [
-    {"id": "kurzschwert", "name": "Kurzschwert", "w": 1, "h": 2, "weapon": {"damage": "1W8+1", "kind": "klinge", "stat": "kraft"}},
-    {"id": "streitkolben", "name": "Streitkolben", "w": 1, "h": 2, "weapon": {"damage": "1W8+2", "kind": "stumpf", "stat": "kraft"}},
-    {"id": "dolch", "name": "Dolch", "w": 1, "h": 1, "weapon": {"damage": "1W6+1", "kind": "klinge", "stat": "agilitaet"}},
-    {"id": "kurzbogen", "name": "Kurzbogen", "w": 1, "h": 3, "weapon": {"damage": "1W8", "kind": "bogen", "stat": "agilitaet"}},
-    {"id": "knueppel", "name": "Knüppel", "w": 1, "h": 2, "weapon": {"damage": "1W6+2", "kind": "stumpf", "stat": "kraft"}},
-    {"id": "heiltrank", "name": "Heiltrank", "w": 1, "h": 1, "stack": true, "use": {"heal": 20}},
-    {"id": "verband", "name": "Verband", "w": 1, "h": 1, "stack": true, "use": {"heal": 10, "cures": "Blutung"}},
-    {"id": "laterne", "name": "Laterne", "w": 1, "h": 1, "effect": "Licht im Nebel: Wahrnehmung im Moor DC −2"},
-    {"id": "seil", "name": "Seil (10 m)", "w": 2, "h": 1, "effect": "Klettern und Retten aus dem Moor DC −2"},
-    {"id": "silberbeutel", "name": "Silberbeutel", "w": 1, "h": 1, "stack": true, "value": 10},
-    {"id": "quasts_brief", "name": "Quasts Brief", "w": 1, "h": 1, "effect": "Beweis: Quast bezahlt die Räuber"},
-    {"id": "lenes_band", "name": "Lenes Haarband", "w": 1, "h": 1, "effect": "Spur: Lene ging freiwillig"},
-    {"id": "irrlichtglas", "name": "Irrlicht im Glas", "w": 1, "h": 1, "effect": "einmal: eine Szene lang Licht ohne Laterne"},
-    {"id": "rotbarts_horn", "name": "Rotbarts Horn", "w": 2, "h": 1, "effect": "ruft die Räuber; sie gehorchen einmal"},
-    {"id": "lederpanzer", "name": "Lederpanzer", "w": 2, "h": 2, "effect": "Klasse K leicht: −2 Schaden"},
+    {
+      "id": "kurzschwert",
+      "name": "Kurzschwert",
+      "w": 1,
+      "h": 2,
+      "weapon": {"damage": "1W8+1", "kind": "klinge", "stat": "kraft"},
+      "icon": "gladius"
+    },
+    {
+      "id": "streitkolben",
+      "name": "Streitkolben",
+      "w": 1,
+      "h": 2,
+      "weapon": {"damage": "1W8+2", "kind": "stumpf", "stat": "kraft"},
+      "icon": "flanged-mace"
+    },
+    {
+      "id": "dolch",
+      "name": "Dolch",
+      "w": 1,
+      "h": 1,
+      "weapon": {"damage": "1W6+1", "kind": "klinge", "stat": "agilitaet"},
+      "icon": "plain-dagger"
+    },
+    {
+      "id": "kurzbogen",
+      "name": "Kurzbogen",
+      "w": 1,
+      "h": 2,
+      "weapon": {"damage": "1W8", "kind": "bogen", "stat": "agilitaet", "ammo": "pfeile"},
+      "icon": "pocket-bow"
+    },
+    {
+      "id": "knueppel",
+      "name": "Knüppel",
+      "w": 1,
+      "h": 2,
+      "weapon": {"damage": "1W6+2", "kind": "stumpf", "stat": "kraft"},
+      "icon": "wood-club"
+    },
+    {"id": "pfeile", "name": "Pfeile", "w": 1, "h": 1, "stack": true, "ammo": true, "icon": "arrow-cluster"},
+    {"id": "heiltrank", "name": "Heiltrank", "w": 1, "h": 1, "stack": true, "use": {"heal": 20}, "icon": "health-potion"},
+    {"id": "verband", "name": "Verband", "w": 1, "h": 1, "stack": true, "use": {"heal": 10, "cures": "Blutung"}, "icon": "bandage-roll"},
+    {"id": "laterne", "name": "Laterne", "w": 1, "h": 1, "effect": "Licht im Nebel: Wahrnehmung im Moor DC −2", "icon": "lantern"},
+    {"id": "seil", "name": "Seil (10 m)", "w": 2, "h": 1, "effect": "Klettern und Retten aus dem Moor DC −2", "icon": "rope-coil"},
+    {"id": "silberbeutel", "name": "Silberbeutel", "w": 1, "h": 1, "stack": true, "value": 10, "icon": "two-coins"},
+    {"id": "quasts_brief", "name": "Quasts Brief", "w": 1, "h": 1, "effect": "Beweis: Quast bezahlt die Räuber", "icon": "envelope"},
+    {"id": "lenes_band", "name": "Lenes Haarband", "w": 1, "h": 1, "effect": "Spur: Lene ging freiwillig", "icon": "ribbon"},
+    {
+      "id": "irrlichtglas",
+      "name": "Irrlicht im Glas",
+      "w": 1,
+      "h": 1,
+      "effect": "einmal: eine Szene lang Licht ohne Laterne",
+      "icon": "glass-ball"
+    },
+    {
+      "id": "rotbarts_horn",
+      "name": "Rotbarts Horn",
+      "w": 2,
+      "h": 1,
+      "effect": "ruft die Räuber; sie gehorchen einmal",
+      "icon": "hunting-horn"
+    },
+    {"id": "lederpanzer", "name": "Lederpanzer", "w": 2, "h": 2, "effect": "Klasse K leicht: −2 Schaden", "icon": "leather-vest"},
     {
       "id": "silberkloeppel",
       "name": "Silberner Klöppel",
       "w": 1,
       "h": 2,
-      "effect": "die Zunge der Kapellenglocke; zurück ins Moor, und das Wasser sinkt"
+      "effect": "die Zunge der Kapellenglocke; zurück ins Moor, und das Wasser sinkt",
+      "icon": "ringing-bell"
     },
-    {"id": "jorins_schluessel", "name": "Jorins Schlüssel", "w": 1, "h": 1, "effect": "öffnet Quasts eiserne Kiste ohne Probe"},
+    {
+      "id": "jorins_schluessel",
+      "name": "Jorins Schlüssel",
+      "w": 1,
+      "h": 1,
+      "effect": "öffnet Quasts eiserne Kiste ohne Probe",
+      "icon": "key"
+    },
     {
       "id": "weidenzweig",
       "name": "Weidenzweig der Muhme",
       "w": 1,
       "h": 2,
-      "effect": "einmal: Schlickgänger weichen zurück; im Wasser Agilität DC −2"
+      "effect": "einmal: Schlickgänger weichen zurück; im Wasser Agilität DC −2",
+      "icon": "tree-branch"
     }
   ],
   "lootTables": {
@@ -448,7 +508,8 @@
       {"item": "verband", "qty": 2},
       {"item": "kurzbogen", "qty": 1},
       {"item": "lenes_band", "qty": 1, "hidden": true},
-      {"item": "silberbeutel", "qty": 1}
+      {"item": "silberbeutel", "qty": 1},
+      {"item": "pfeile", "qty": 6}
     ],
     "kapelle": [{"item": "silberbeutel", "qty": 3}, {"item": "heiltrank", "qty": 1}, {"item": "lederpanzer", "qty": 1}],
     "strassenraub": [{"item": "dolch", "qty": 1}, {"item": "silberbeutel", "qty": 1}],
@@ -456,7 +517,7 @@
     "rotbart": [{"item": "rotbarts_horn", "qty": 1}, {"item": "silberbeutel", "qty": 2}],
     "schmiede": [{"item": "verband", "qty": 1}],
     "schmiede_kiste": [{"item": "heiltrank", "qty": 1}, {"item": "silberbeutel", "qty": 2}, {"item": "lederpanzer", "qty": 1}],
-    "karren": [{"item": "heiltrank", "qty": 1}, {"item": "silberbeutel", "qty": 2}, {"item": "seil", "qty": 1}],
+    "karren": [{"item": "heiltrank", "qty": 1}, {"item": "silberbeutel", "qty": 2}, {"item": "seil", "qty": 1}, {"item": "pfeile", "qty": 4}],
     "opferstock": [{"item": "silberbeutel", "qty": 1}, {"item": "verband", "qty": 1}],
     "weideninsel": [
       {"item": "verband", "qty": 1},
@@ -466,11 +527,11 @@
     "morgengrauen": [{"item": "heiltrank", "qty": 1}],
     "quasts_kiste": [{"item": "silberkloeppel", "qty": 1}, {"item": "silberbeutel", "qty": 4}],
     "schlick": [{"item": "verband", "qty": 1}],
-    "soeldner": [{"item": "knueppel", "qty": 1}, {"item": "silberbeutel", "qty": 1}],
+    "soeldner": [{"item": "knueppel", "qty": 1}, {"item": "silberbeutel", "qty": 1}, {"item": "pfeile", "qty": 3}],
     "quast": [{"item": "heiltrank", "qty": 1}, {"item": "silberbeutel", "qty": 2}]
   },
   "startKit": ["kurzschwert", "heiltrank"],
-  "startKitChoices": [["kurzschwert"], ["streitkolben"], ["dolch", "verband"], ["knueppel", "verband"]],
+  "startKitChoices": [["kurzschwert"], ["streitkolben"], ["dolch", "verband"], ["knueppel", "verband"], ["kurzbogen", "pfeile*10", "dolch"]],
   "abilities": [
     "Zäh: Zustände ticken bei dir halbiert.",
     "Falkenauge: einmal pro Szene etwas Verborgenes sehen ohne Probe.",
