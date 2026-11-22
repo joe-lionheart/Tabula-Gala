@@ -10,10 +10,34 @@ export function createModerator(env = process.env) {
     key,
     model: env.TISCHLEITER_MODEL || 'claude-sonnet-5-5',
     maxTokensPerSession: Number(env.TISCHLEITER_TOKEN_DECKEL || 2000000),
+    effort: env.TISCHLEITER_EFFORT || 'low',
   });
 }
 
-function claudeModerator({ key, model, maxTokensPerSession }) {
+// Neuere Modelle (z. B. Sonnet 5.5) erlauben kein erzwungenes Werkzeug (tool_choice "tool"/"any" → 400)
+// und denken standardmäßig. Darum: tool_choice "auto", der Prompt verlangt das Werkzeug,
+// max_tokens deckt Denken + Antwort, und die Denktiefe (effort) ist einstellbar.
+export function moderatorRequest({ model, system, context, effort }) {
+  const body = {
+    model, max_tokens: 6000, system,
+    tools: [TOOL], tool_choice: { type: 'auto' },
+    messages: [{ role: 'user', content: `${context}\n\nAntworte jetzt, indem du das Werkzeug „${TOOL.name}“ aufrufst.` }],
+  };
+  if (effort && effort !== 'default') body.output_config = { effort };
+  return body;
+}
+
+// Antwort lesen: zuerst das Werkzeug; kommt nur Text zurück, wird er als Erzählung genutzt
+export function readModeratorResponse(data) {
+  const content = data.content || [];
+  const block = content.find((b) => b.type === 'tool_use' && b.name === TOOL.name);
+  if (block) return { raw: block.input, viaTool: true };
+  const text = content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+  if (text) return { raw: { narration: text.slice(0, 1200), scene_signal: 'continue' }, viaTool: false };
+  throw new Error(`Keine Moderator-Antwort (stop_reason: ${data.stop_reason || '?'})`);
+}
+
+function claudeModerator({ key, model, maxTokensPerSession, effort }) {
   return {
     kind: 'claude', model,
     async judge({ system, context, usage }) {
@@ -24,19 +48,14 @@ function claudeModerator({ key, model, maxTokensPerSession }) {
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model, max_tokens: 900, system,
-          tools: [TOOL], tool_choice: { type: 'tool', name: TOOL.name },
-          messages: [{ role: 'user', content: context }],
-        }),
-        signal: AbortSignal.timeout(20000),
+        body: JSON.stringify(moderatorRequest({ model, system, context, effort })),
+        signal: AbortSignal.timeout(60000),
       });
       if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
       const data = await res.json();
-      const block = (data.content || []).find((b) => b.type === 'tool_use' && b.name === TOOL.name);
-      if (!block) throw new Error('Keine Moderator-Antwort im Tool-Format');
+      const { raw, viaTool } = readModeratorResponse(data);
       return {
-        raw: block.input,
+        raw, viaTool,
         latencyMs: Date.now() - started,
         tokensIn: data.usage?.input_tokens || 0,
         tokensOut: data.usage?.output_tokens || 0,

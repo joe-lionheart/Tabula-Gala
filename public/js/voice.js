@@ -68,7 +68,13 @@ export class TableMic {
       this.onInterim?.(interim);
     };
     this.rec.onend = () => { this.running = false; this.onState?.(this.state()); if (this.wanted && !this.paused) setTimeout(() => this.start(), 250); };
-    this.rec.onerror = (e) => { if (e.error === 'not-allowed') { this.wanted = false; this.onState?.('verweigert'); } };
+    // Fehler sichtbar machen statt verschlucken (z. B. Safari ohne Siri/Diktat: service-not-allowed)
+    const errText = { 'not-allowed': 'verweigert (Mikro-Erlaubnis im Browser prüfen)', 'service-not-allowed': 'Spracherkennung gesperrt (Chrome nutzen oder Diktieren am Mac einschalten)', 'audio-capture': 'kein Mikro gefunden', network: 'Spracherkennung offline (Internet nötig)' };
+    this.rec.onerror = (e) => {
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
+      if (['not-allowed', 'service-not-allowed', 'audio-capture'].includes(e.error)) this.wanted = false;
+      this.onState?.(`Fehler: ${errText[e.error] || e.error}`);
+    };
   }
 
   state() { return !this.supported ? 'nicht unterstützt' : this.paused ? 'pausiert (Moderator spricht)' : this.running ? 'hört zu' : this.wanted ? 'startet …' : 'aus'; }

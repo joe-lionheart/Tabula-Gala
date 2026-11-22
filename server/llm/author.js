@@ -85,22 +85,41 @@ export function mergeAdventure(base, gen) {
 export function createAuthor(env = process.env) {
   const key = env.ANTHROPIC_API_KEY;
   if (!key) return mockAuthor();
-  return claudeAuthor({ key, model: env.TISCHLEITER_AUTOR_MODEL || env.TISCHLEITER_MODEL || 'claude-sonnet-5-5' });
+  return claudeAuthor({
+    key,
+    model: env.TISCHLEITER_AUTOR_MODEL || env.TISCHLEITER_MODEL || 'claude-sonnet-5-5',
+    effort: env.TISCHLEITER_AUTOR_EFFORT || 'medium',
+  });
 }
 
-function claudeAuthor({ key, model }) {
+function claudeAuthor({ key, model, effort }) {
+  // tool_choice "auto": neuere Modelle lehnen erzwungene Werkzeuge ab (400). Antwortet das Modell
+  // ohne Werkzeug, gibt es genau eine Erinnerung.
   async function call(messages, system) {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: 16000, system, tools: [AUTHOR_TOOL], tool_choice: { type: 'tool', name: AUTHOR_TOOL.name }, messages }),
-      signal: AbortSignal.timeout(180000),
-    });
-    if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    const data = await res.json();
-    const block = (data.content || []).find((b) => b.type === 'tool_use');
-    if (!block) throw new Error('Kein Abenteuer im Werkzeug-Format');
-    return { block, usage: data.usage || {} };
+    let tokensIn = 0, tokensOut = 0;
+    const convo = [...messages];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const body = { model, max_tokens: 32000, system, tools: [AUTHOR_TOOL], tool_choice: { type: 'auto' }, messages: convo };
+      if (effort && effort !== 'default') body.output_config = { effort };
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(300000),
+      });
+      if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      const data = await res.json();
+      tokensIn += data.usage?.input_tokens || 0; tokensOut += data.usage?.output_tokens || 0;
+      const block = (data.content || []).find((b) => b.type === 'tool_use' && b.name === AUTHOR_TOOL.name);
+      if (block) return { block, content: data.content, usage: { input_tokens: tokensIn, output_tokens: tokensOut } };
+      if (attempt === 0 && data.stop_reason !== 'max_tokens' && (data.content || []).length) {
+        convo.push({ role: 'assistant', content: data.content || [] });
+        convo.push({ role: 'user', content: `Bitte schick das Abenteuer jetzt vollständig über das Werkzeug „${AUTHOR_TOOL.name}“.` });
+        continue;
+      }
+      throw new Error(`Kein Abenteuer im Werkzeug-Format (stop_reason: ${data.stop_reason || '?'})`);
+    }
+    throw new Error('Kein Abenteuer im Werkzeug-Format');
   }
   return {
     kind: 'claude', model,
@@ -110,13 +129,14 @@ function claudeAuthor({ key, model }) {
       const messages = [{ role: 'user', content: ask }];
       let tokensIn = 0, tokensOut = 0;
       for (let round = 0; round < 2; round++) {
-        const { block, usage } = await call(messages, system);
+        const { block, content, usage } = await call(messages, system);
         tokensIn += usage.input_tokens || 0; tokensOut += usage.output_tokens || 0;
         const world = mergeAdventure(base, block.input);
         const check = validateWorld(world);
         if (check.ok) return { world, fixes: check.fixes, tokensIn, tokensOut, rounds: round + 1 };
         // Eine Nachbesserungsrunde mit den konkreten Fehlern
-        messages.push({ role: 'assistant', content: [block] });
+        // ganze Antwort zurückgeben (inkl. Denkblöcke), sonst lehnt die API die Fortsetzung ab
+        messages.push({ role: 'assistant', content: content || [block] });
         messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: block.id, is_error: true, content: `Das Abenteuer hat Fehler. Bitte vollständig korrigiert neu senden:\n- ${check.errors.slice(0, 30).join('\n- ')}` }] });
         if (round === 1) throw Object.assign(new Error(`Abenteuer ungültig: ${check.errors.slice(0, 5).join('; ')}`), { tokensIn, tokensOut });
       }

@@ -99,3 +99,23 @@ test('Zweimal kaputt: Rückfall aufs Testabenteuer', async () => {
   assert.equal(g.world, base);
   assert.ok(g.startGame().ok);
 });
+
+test('Autor: tool_choice auto, Denktiefe medium, Erinnerung wenn das Werkzeug fehlt', async () => {
+  const { g } = lobby();
+  const calls = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body); calls.push(body);
+    const content = calls.length === 1
+      ? [{ type: 'text', text: 'Hier ist meine Idee …' }]
+      : [{ type: 'tool_use', id: 't2', name: 'write_adventure', input: generated() }];
+    return { ok: true, json: async () => ({ content, stop_reason: calls.length === 1 ? 'end_turn' : 'tool_use', usage: { input_tokens: 100, output_tokens: 50 } }) };
+  };
+  try { await g.writeAdventure(createAuthor({ ANTHROPIC_API_KEY: 'test' }), base); } finally { globalThis.fetch = orig; }
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].tool_choice, { type: 'auto' });
+  assert.deepEqual(calls[0].output_config, { effort: 'medium' });
+  assert.match(JSON.stringify(calls[1].messages.at(-1)), /Werkzeug/);
+  assert.equal(g.state.adventureGen.status, 'ready');
+  assert.equal(g.world.adventure.title, 'Der Schatz der Möwe');
+});
