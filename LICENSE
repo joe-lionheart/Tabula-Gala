@@ -1,0 +1,17 @@
+Tabula Gala – die Rollenspielleiter (Arbeitstitel)
+Copyright © 2026 [Vor- und Nachname des Inhabers eintragen]. Alle Rechte vorbehalten.
+
+Dieser Quellcode, die Spielinhalte (Abenteuer, Welten, Texte, Regeln in ihrer
+Ausgestaltung, Prompts, Klang-Zuordnungen) und die Gestaltung der Oberfläche sind
+urheberrechtlich geschützt. Ohne vorherige schriftliche Zustimmung des Inhabers ist
+es nicht gestattet, sie ganz oder teilweise zu kopieren, zu verändern, zu
+veröffentlichen, weiterzugeben, zu verkaufen oder als Grundlage für eigene Produkte
+zu verwenden.
+
+Die Nutzung der laufenden App als Spieler:in oder Spielleiter:in auf Einladung des
+Inhabers ist erlaubt. Daraus entsteht kein Recht am Code oder an den Inhalten.
+
+Ausgenommen sind Bestandteile Dritter, die unter ihren eigenen Lizenzen stehen:
+- Icons von game-icons.net (CC BY 3.0, Urheber siehe public/icons/CREDITS.md)
+- Klänge laut docs/KLAENGE.md (überwiegend CC0)
+- npm-Pakete laut package.json (jeweils eigene Lizenz)

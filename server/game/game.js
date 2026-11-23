@@ -19,8 +19,10 @@ const token = () => randomBytes(16).toString('hex');
 const roman = (n) => ['', 'I', 'II', 'III', 'IV', 'V'][n] || String(n);
 
 export class Game {
-  constructor({ code, world, moderator, durationMin = 90, rng = cryptoRng(), persist = () => {}, log = () => {} }) {
+  constructor({ code, world, moderator, durationMin = 90, mode = 'ai', rng = cryptoRng(), persist = () => {}, log = () => {} }) {
     this.code = code;
+    // Spielleiter-Modus: ein Mensch leitet, die App liefert Klang und auf Wunsch die Mechanik (Würfel, Rucksack, Loot)
+    if (mode === 'gm') world = gmWorld(world);
     this.world = world;
     this.moderator = moderator;
     this.rng = rng;
@@ -29,6 +31,8 @@ export class Game {
     this.listeners = new Set();
     this.hostToken = token();
     this.state = {
+      mode: mode === 'gm' ? 'gm' : 'ai', // ai = KI-Moderator · gm = menschliche Spielleitung
+      recording: { on: false, since: null, note: '' }, // Mitschnitt nur mit Einwilligung aller am Tisch
       phase: 'lobby',             // lobby | creation | playing | interlude | ended
       nextSceneIndex: null,       // während der Pause zwischen zwei Akten
       path: [],                   // gewählte Ausgänge: {sceneId, exitId, label}
@@ -47,7 +51,7 @@ export class Game {
       feed: [],                   // {ts, who, text, kind}
       transcript: [],             // {ts, speakerId, speakerName, text, source}
       activeSpeaker: null,        // {playerId, until}
-      ai: { enabled: true, kind: moderator.kind, model: moderator.model, busy: false, tokensIn: 0, tokensOut: 0, calls: 0, lastLatencyMs: null, lastError: null },
+      ai: { enabled: mode !== 'gm', kind: moderator.kind, model: moderator.model, busy: false, tokensIn: 0, tokensOut: 0, calls: 0, lastLatencyMs: null, lastError: null },
       milestonesOpen: [],
       riddle: null,               // {id, sceneId, attempts, hintGiven}
       solvedRiddles: [],          // Rätsel-IDs
@@ -56,7 +60,7 @@ export class Game {
       penaltyMin: 0,              // Zeit, die falsche Rätselantworten gekostet haben
       adventureGen: { status: 'test', title: world.adventure.title, note: '', wishes: [] }, // test | writing | ready | failed
     };
-    this.customWorld = false;
+    this.customWorld = mode === 'gm';
     this.quietTimer = null;
     this.actTimer = null;
     this.autoContinue = true;
@@ -88,6 +92,7 @@ export class Game {
   log(type, data) { this.writeLog({ ts: new Date().toISOString(), type, ...data }); }
 
   get scene() { return this.world.scenes[this.state.sceneIndex] || null; }
+  get isGm() { return this.state.mode === 'gm'; }
   itemDef(id) { return this.world.items.find((i) => i.id === id); }
   player(id) { return this.state.players.find((p) => p.id === id); }
   charOf(playerId) { return this.state.characters[playerId]; }
@@ -187,6 +192,7 @@ export class Game {
     if (this.state.phase === 'playing') return { ok: false, error: 'Läuft schon' };
     this.state.phase = 'playing';
     this.state.startedAt = Date.now();
+    if (this.isGm) { this.feed('Tisch', 'Das Spiel läuft. Die Spielleitung erzählt.', 'system'); this.enterScene(0); return { ok: true }; }
     this.say('Willkommen am Tisch. Ich bin euer Moderator heute Abend, eine künstliche Intelligenz. Ihr sprecht einfach, ich höre zu und erzähle.');
     this.say(`Heute: ${this.world.adventure.title}. ${this.world.adventure.pitch}`);
     this.enterScene(0);
@@ -209,8 +215,9 @@ export class Game {
       tickConditions(ch, this.rng);
       if (ch.down) { const r = rescueRoll(ch, this.rng); if (r.ok) this.feed('Tisch', `${ch.name} kommt wieder auf die Beine.`, 'system'); }
     }
-    this.cue(sound.sceneCue(s));
     this.log('scene', { sceneId: s.id });
+    if (this.isGm) { this.changed(); return; } // Spielleitung bestimmt Klang und Erzählung selbst
+    this.cue(sound.sceneCue(s));
     this.say(s.intro);
     const first = this.characters[Math.floor(this.rng.int(0, this.characters.length - 1))];
     this.say(`${first.name}, was tust du?`);
@@ -294,7 +301,9 @@ export class Game {
     this.cue({ reason: 'Ende', sfx: [{ id: 'level_up', delayMs: 0 }], bed: 'silence' });
     const outro = this.scene?.exits.find((e) => e.id === this.state.path.at(-1)?.exitId)?.outro;
     if (outro) this.say(outro);
-    this.say('Hier endet das Nachtstück. Eure Figuren sind gespeichert und dürfen beim nächsten Mal wiederkommen. Danke, dass ihr mitgespielt habt.');
+    if (this.isGm) this.feed('Tisch', 'Ende des Abends. Eure Figuren sind gespeichert.', 'system');
+    else this.say('Hier endet das Nachtstück. Eure Figuren sind gespeichert und dürfen beim nächsten Mal wiederkommen. Danke, dass ihr mitgespielt habt.');
+    if (this.state.recording.on) this.setRecording(false);
     this.changed();
     return { ok: true };
   }
@@ -405,7 +414,10 @@ export class Game {
     this.quietTimer = setTimeout(() => this.runModerator(), delay);
   }
 
-  setAi(enabled) { this.state.ai.enabled = Boolean(enabled); this.changed(); return { ok: true }; }
+  setAi(enabled) {
+    if (this.isGm) return { ok: false, error: 'Im Spielleiter-Modus leitet ein Mensch' };
+    this.state.ai.enabled = Boolean(enabled); this.changed(); return { ok: true };
+  }
 
   transcriptText(n = 24) {
     return this.state.transcript.slice(-n).map((u) => `[${u.speakerName}] ${u.text}`).join('\n') || '(noch nichts gesagt)';
@@ -847,6 +859,64 @@ export class Game {
   }
 
   // ---------- Host-Eingriffe ----------
+  // ---------- Spielleiter-Modus ----------
+  // Ein Klang, den die Spielleitung ausgelöst hat (Taste oder Stichwort). Ohne Mitschnitt nur, welcher Klang, kein Wortlaut.
+  gmCue({ kind, id, source = 'button', word } = {}) {
+    const known = kind === 'bed' ? sound.knownBed(id) : sound.knownSfx(id);
+    if (!known) return { ok: false, error: 'Unbekannter Klang' };
+    this.log('gm_cue', { kind, id, source: source === 'voice' ? 'voice' : 'button', ...(this.state.recording.on && word ? { word: String(word).slice(0, 40) } : {}) });
+    return { ok: true };
+  }
+
+  // Gesprochenes der Spielleitung: nur mit eingeschaltetem Mitschnitt gespeichert, sonst sofort verworfen
+  gmSpeech({ text, cues = [] } = {}) {
+    if (!this.state.recording.on) return { ok: true, stored: false };
+    const t = String(text || '').trim().slice(0, 600);
+    if (!t) return { ok: true, stored: false };
+    this.log('gm_speech', { text: t, cues: (Array.isArray(cues) ? cues : []).slice(0, 4).map((c) => ({ kind: c.kind, id: c.id, word: String(c.word || '').slice(0, 40) })) });
+    return { ok: true, stored: true };
+  }
+
+  setRecording(on, { consent = false, note = '' } = {}) {
+    if (on && !consent) return { ok: false, error: 'Mitschnitt nur, wenn alle am Tisch zugestimmt haben' };
+    const r = this.state.recording;
+    if (on && !r.on) { r.on = true; r.since = Date.now(); r.note = String(note).slice(0, 200); this.log('recording', { on: true, note: r.note, players: this.state.players.map((p) => p.name) }); this.feed('Tisch', 'Mitschnitt läuft (alle haben zugestimmt).', 'system'); }
+    if (!on && r.on) { r.on = false; this.log('recording', { on: false, minutes: this.minutes(r.since) }); r.since = null; this.feed('Tisch', 'Mitschnitt beendet.', 'system'); }
+    this.changed();
+    return { ok: true };
+  }
+
+  // Fund oder Truhe von Hand: Gegenstände aus dem Katalog erscheinen auf allen Handys
+  gmLoot({ items = [], label = '' } = {}) {
+    if (this.state.phase !== 'playing') return { ok: false, error: 'Erst das Spiel starten' };
+    const list = (Array.isArray(items) ? items : []).slice(0, 8)
+      .map((e) => ({ itemId: String(e?.itemId || ''), qty: Math.max(1, Math.min(20, Number(e?.qty) || 1)) }))
+      .filter((e) => this.itemDef(e.itemId));
+    if (!list.length) return { ok: false, error: 'Kein gültiger Gegenstand' };
+    for (const e of list) this.addLoot(e.itemId, e.qty, false);
+    const names = list.map((e) => `${this.itemDef(e.itemId).name}${e.qty > 1 ? ` ×${e.qty}` : ''}`).join(', ');
+    const what = String(label).trim().slice(0, 60);
+    this.feed('Tisch', `${what ? `${what}: ` : 'Fund: '}${names}. Wer zuerst tippt, hat es.`, 'system');
+    this.emit({ type: 'buzz', all: true, kind: 'loot' });
+    this.log('gm_loot', { items: list, label: what });
+    this.changed();
+    return { ok: true };
+  }
+
+  // Schaden oder Heilung von Hand (die Spielleitung entscheidet den Betrag)
+  gmLp({ playerId, delta, reason = '' } = {}) {
+    const ch = this.charOf(playerId);
+    const d = Math.trunc(Number(delta));
+    if (!ch) return { ok: false, error: 'Figur unbekannt' };
+    if (!d || Math.abs(d) > 200) return { ok: false, error: 'Betrag zwischen −200 und 200' };
+    const lp = applyLp(ch, d);
+    const why = String(reason).trim().slice(0, 80);
+    this.feed('Tisch', `${ch.name}: ${d > 0 ? '+' : '−'}${Math.abs(d)} LP${why ? ` (${why})` : ''}`, 'system');
+    this.log('gm_lp', { playerId, delta: d, reason: why, lp });
+    this.changed();
+    return { ok: true, wentDown: Boolean(lp?.wentDown) };
+  }
+
   hostSfx(id) { this.cue({ reason: 'Host', sfx: [{ id, delayMs: 0 }] }); return { ok: true }; }
   hostBed(id) { this.cue({ reason: 'Host', sfx: [], bed: id }); return { ok: true }; }
   hostSay(text) { this.say(String(text).slice(0, 400)); this.changed(); return { ok: true }; }
@@ -859,6 +929,8 @@ export class Game {
     const me = !isHost ? this.charOf(viewer) : null;
     return {
       code: this.code,
+      mode: s.mode,
+      recording: { on: s.recording.on, since: s.recording.since },
       phase: s.phase, paused: s.paused,
       clock: { durationMin: s.durationMin, elapsedMin: this.elapsedMin, sceneMin: this.minutes(s.sceneStartedAt), penaltyMin: s.penaltyMin || 0 },
       world: { name: this.world.name, title: this.world.adventure.title, pitch: this.world.adventure.pitch },
@@ -896,10 +968,24 @@ export class Game {
       startKitChoices: this.world.startKitChoices.map((c) => c.map((e) => { const [id, n] = String(e).split('*'); return `${this.itemDef(id)?.name}${n ? ` ×${n}` : ''}`; }).join(' + ')),
       stats: STATS.map((k) => ({ key: k, label: STAT_LABELS[k] })),
       ai: isHost ? { ...s.ai } : { enabled: s.ai.enabled, busy: s.ai.busy },
+      ...(isHost && this.isGm ? { catalog: this.world.items.map((i) => ({ id: i.id, name: i.name, icon: i.icon || null })), enemyCatalog: this.world.enemies.map((e) => ({ id: e.id, name: e.name })) } : {}),
     };
   }
 
   snapshot() {
     return { code: this.code, hostToken: this.hostToken, state: this.state, ...(this.customWorld ? { world: this.world } : {}) };
   }
+}
+
+// Welt für den Spielleiter-Modus: eine freie Szene ohne Vorgaben; Kataloge (Gegenstände, Gegner) bleiben nutzbar
+export function gmWorld(base) {
+  return {
+    ...base,
+    adventure: { ...base.adventure, title: 'Freies Spiel', pitch: 'Die Spielleitung erzählt, die App liefert Klang und Würfel.', generated: false },
+    scenes: [{
+      id: 'frei', act: 1, title: 'Freies Spiel', ambience: 'silence', intro: '', anchors: [], npcs: [],
+      exits: [{ id: 'ende', label: 'Abend beenden', to: null }], abortSignal: '', budgetMin: 600,
+      enemies: (base.enemies || []).map((e) => e.id), loot: null, allowedSfx: [], arc: 'frei', chests: [], riddles: [],
+    }],
+  };
 }

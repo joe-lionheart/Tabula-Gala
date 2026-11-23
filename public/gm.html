@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tabula Gala · Spielleitung</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%23e3b45a%22/%3E%3C/svg%3E">
+</head>
+<body>
+  <main class="wrap wide">
+    <div class="row" style="justify-content: space-between">
+      <h1>Tabula Gala <small class="muted">Spielleitung</small></h1>
+      <div class="row">
+        <span class="pill" id="net">…</span>
+        <span class="pill" id="clock"></span>
+        <span class="pill off hidden" id="recPill">● Mitschnitt</span>
+        <button class="primary" id="unlock">Ton einschalten</button>
+      </div>
+    </div>
+
+    <div class="grid3">
+      <!-- links: Klang auf Zuruf -->
+      <section>
+        <div class="card">
+          <h2>Klang auf Zuruf</h2>
+          <p class="muted small">Du erzählst, die App hört Stichworte und spielt den passenden Klang. „Die Glocke schlägt“ → Glocke.</p>
+          <div class="row">
+            <button class="primary" id="btnMic">Zuhören: aus</button>
+            <span class="pill" id="micState">aus</span>
+          </div>
+          <label class="row" style="margin-top:.5rem"><input type="checkbox" id="auto" checked style="width:auto"> sofort abspielen <small class="muted">(aus: nur vorschlagen)</small></label>
+          <div class="interim" id="interim"></div>
+          <h3 style="margin-top:.7rem">Erkannt</h3>
+          <div id="heard" class="heard"><p class="muted small">Noch nichts.</p></div>
+          <details style="margin-top:.6rem">
+            <summary>Stichworte bearbeiten</summary>
+            <p class="muted small">Pro Klang: Wörter mit Komma getrennt. Ab 4 Buchstaben reicht der Wortanfang („glocke“ trifft auch „Glocken“).</p>
+            <div id="triggers"></div>
+            <div class="row" style="margin-top:.4rem">
+              <select id="newSound" class="grow"></select>
+              <input id="newWords" class="grow" placeholder="Wörter, z. B. drache, schwingen">
+              <button id="btnAddTrigger">Dazu</button>
+            </div>
+            <button id="btnResetTriggers" style="margin-top:.4rem">Auf Standard zurücksetzen</button>
+          </details>
+          <p class="muted small" style="margin-top:.6rem">Die Spracherkennung läuft im Browser (Chrome nutzt dafür Google-Server). Diese App speichert nichts von dem, was du sagst, außer der Mitschnitt ist eingeschaltet.</p>
+        </div>
+      </section>
+
+      <!-- Mitte: Soundboard -->
+      <section>
+        <div class="card">
+          <div class="row" style="justify-content: space-between">
+            <h2>Soundboard</h2>
+            <label class="row small"><input type="checkbox" id="assign" style="width:auto"> eigene Klänge zuordnen</label>
+          </div>
+          <p class="muted small hidden" id="assignHint">Tippe eine Taste und wähle eine Audiodatei von diesem Rechner. Sie bleibt in diesem Browser gespeichert. Nochmal tippen und „Abbrechen“ = zurück zum Standard.</p>
+          <h3>Teppich (Ort, Stimmung)</h3>
+          <div class="tiles" id="beds"></div>
+          <h3 style="margin-top:.7rem">Effekte</h3>
+          <div class="sfxgrid" id="sfx"></div>
+          <div class="row" style="margin-top:.7rem">
+            <label class="grow">Teppich <input id="volBed" type="range" min="0" max="1" step="0.05" value="1"></label>
+            <label class="grow">Effekte <input id="volSfx" type="range" min="0" max="1" step="0.05" value="1"></label>
+          </div>
+          <input type="file" id="filePick" accept="audio/*" class="hidden">
+        </div>
+        <div class="card">
+          <h3>Am Tisch</h3>
+          <div class="feed" id="feed"></div>
+        </div>
+      </section>
+
+      <!-- rechts: Mitschnitt und Mechanik -->
+      <section>
+        <div class="card">
+          <h3>Mitschnitt</h3>
+          <div id="rec"></div>
+        </div>
+        <div class="card">
+          <h3>Handys &amp; Mechanik <small class="muted">(optional)</small></h3>
+          <p class="muted small">Wer will, tritt mit dem Handy bei: Figurenbogen, Würfel, Rucksack, Funde. Ohne Handys läuft nur der Klang.</p>
+          <div id="lobby">
+            <div class="code" id="code"></div>
+            <div class="qr" id="qr"></div>
+            <p class="muted small" id="url"></p>
+          </div>
+          <div id="players"></div>
+          <div class="row" style="margin-top:.5rem">
+            <button id="btnCreation">Figuren erstellen</button>
+            <button class="primary" id="btnStart">Spiel starten</button>
+            <button class="danger hidden" id="btnEnd">Abend beenden</button>
+          </div>
+          <div id="mech" class="hidden">
+            <div class="card inner hidden" id="checkCard"><b>Probe läuft</b><div id="check"></div></div>
+            <h4>Probe</h4>
+            <div class="row">
+              <select id="ckWho" class="grow"></select>
+              <select id="ckStat" class="grow"></select>
+              <input id="ckDc" type="number" min="5" max="25" value="12" style="width:4.5rem" title="Schwierigkeit">
+            </div>
+            <div class="row" style="margin-top:.3rem"><input id="ckWhy" class="grow" placeholder="Wofür? z. B. Tor aufstemmen"><button id="btnCheck">Würfeln lassen</button></div>
+            <h4>Fund oder Truhe</h4>
+            <div class="row">
+              <select id="lootItem" class="grow"></select>
+              <input id="lootQty" type="number" min="1" max="20" value="1" style="width:4rem">
+              <button id="btnLootAdd">+</button>
+            </div>
+            <div id="lootDraft" class="row" style="margin-top:.3rem"></div>
+            <div class="row" style="margin-top:.3rem"><input id="lootLabel" class="grow" placeholder="z. B. Truhe im Keller"><button class="primary" id="btnLoot">Auf die Handys</button></div>
+            <div id="loot" class="muted small" style="margin-top:.3rem"></div>
+            <h4>Lebenspunkte</h4>
+            <div class="row">
+              <select id="lpWho" class="grow"></select>
+              <input id="lpAmt" type="number" min="1" max="200" value="10" style="width:4.5rem">
+              <button id="btnHurt">− Schaden</button>
+              <button id="btnHeal">+ Heilen</button>
+            </div>
+            <div class="row" style="margin-top:.4rem"><button id="btnRest">Rast für alle (+40 LP)</button></div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <p class="muted small" style="text-align:center">© 2026 Tabula Gala. Alle Rechte vorbehalten. · Icons: game-icons.net (CC BY 3.0) · Klänge: siehe docs/KLAENGE.md</p>
+  </main>
+  <script type="module" src="/js/gm.js"></script>
+</body>
+</html>

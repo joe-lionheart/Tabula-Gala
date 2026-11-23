@@ -48,11 +48,11 @@ function gameOptions(dir) {
   };
 }
 
-function createGame(durationMin) {
+function createGame(durationMin, mode = 'ai') {
   const code = newCode();
   const dir = join(DATA, `${new Date().toISOString().slice(0, 10)}_${code}`);
   mkdirSync(dir, { recursive: true });
-  const game = new Game({ code, durationMin, ...gameOptions(dir) });
+  const game = new Game({ code, durationMin, mode, ...gameOptions(dir) });
   games.set(code, game);
   return game;
 }
@@ -81,6 +81,7 @@ export function buildServer() {
 
   app.get('/join/:code', (req, reply) => reply.sendFile('join.html'));
   app.get('/host/:code', (req, reply) => reply.sendFile('host.html'));
+  app.get('/gm/:code', (req, reply) => reply.sendFile('gm.html'));
 
   // Welche Klangdateien wirklich da sind (der Host lädt nur diese, sonst Platzhalter)
   app.get('/api/audio-files', async () => {
@@ -91,14 +92,15 @@ export function buildServer() {
   });
 
   app.post('/api/sessions', async (req) => {
-    const g = createGame(Number(req.body?.durationMin) || world.adventure.durationMin);
-    return { code: g.code, hostToken: g.hostToken, ai: { kind: g.moderator.kind, model: g.moderator.model } };
+    const mode = req.body?.mode === 'gm' ? 'gm' : 'ai';
+    const g = createGame(Number(req.body?.durationMin) || world.adventure.durationMin, mode);
+    return { code: g.code, hostToken: g.hostToken, mode, ai: { kind: g.moderator.kind, model: g.moderator.model } };
   });
 
   app.get('/api/sessions/:code', async (req, reply) => {
     const g = games.get(String(req.params.code).toUpperCase());
     if (!g) return reply.code(404).send({ error: 'Keine Runde mit diesem Code' });
-    return { code: g.code, phase: g.state.phase, title: world.adventure.title };
+    return { code: g.code, phase: g.state.phase, mode: g.state.mode, title: g.world.adventure.title };
   });
 
   app.post('/api/sessions/:code/join', async (req, reply) => {
@@ -211,6 +213,12 @@ function handle(g, viewer, host, m) {
     write: () => { g.writeAdventure(createAuthor(), world); return { ok: true }; },
     useTest: () => g.useTestAdventure(world),
     riddle: () => g.startRiddle(p.id),
+    // Spielleiter-Modus
+    gmCue: () => g.gmCue(p),
+    gmSpeech: () => g.gmSpeech(p),
+    recording: () => g.setRecording(Boolean(p.on), { consent: p.consent === true, note: p.note }),
+    gmLoot: () => g.gmLoot(p),
+    gmLp: () => g.gmLp(p),
   };
   const fn = host ? hostActions[m.action] : playerActions[m.action];
   if (!fn) return { ok: false, error: `Unbekannte Aktion ${m.action}` };

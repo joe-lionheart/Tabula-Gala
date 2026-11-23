@@ -18,6 +18,10 @@ Interner Projektname: Tischleiter. Regeln: Kernmechanik v0.5 (Projektwissen, Dat
 8. Händler: einfach verhandeln, gute Argumente senken den Preis. Bezahlt wird mit Silber aus dem Rucksack.
 9. Loot und Truhen erscheinen auf allen Handys. Wer zuerst tippt und Platz hat, bekommt es.
 
+## Spielleiter-Modus (neu, 23.11.2026)
+
+Ein Mensch leitet wie immer, in jedem System. Die App hört mit und spielt passende Klänge auf Stichwort („die Glocke schlägt“ → Glocke), dazu ein Soundboard mit eigenen Klängen und auf Wunsch Würfel, Rucksack und Funde über die Handys. Ohne KI, ohne API-Kosten. Start: Startseite → „Spielleiter-Modus öffnen“. Anleitung: [`docs/SPIELLEITER.md`](docs/SPIELLEITER.md). Mitschnitt nur mit Einwilligung aller am Tisch.
+
 ## Starten (Host-Laptop)
 
 Voraussetzung: [Node.js 22 oder neuer](https://nodejs.org) und Google Chrome oder Microsoft Edge.
@@ -86,6 +90,10 @@ Grundsätze (Dev-Roadmap):
 npm test                 # Regeln, Spielablauf, KI-Vertrag
 node scripts/smoke.mjs   # Server + Host + zwei Handys über WebSocket
 ```
+
+## Rechte
+
+© 2026, alle Rechte vorbehalten, siehe [`LICENSE`](LICENSE). Was geschützt ist und was nicht: [`docs/SCHUTZ.md`](docs/SCHUTZ.md). Für Testtische: [`docs/TESTTISCH-VEREINBARUNG.md`](docs/TESTTISCH-VEREINBARUNG.md) (Entwurf).
 
 ## Mitwirkende
 

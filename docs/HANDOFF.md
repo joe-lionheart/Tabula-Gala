@@ -2,6 +2,13 @@
 
 > Neue Session: zuerst diese Datei, dann `docs/STAND.md`, dann `README.md`. Projektwissen claude.ai: Datei 08 (Handoff), 06 (Kernmechanik), 07 (Dev-Roadmap). Entscheidungen hier nicht neu diskutieren.
 
+## Nachtrag 23.11.2026: Spielleiter-Version, Schutz, Stimme
+- **Spielleiter-Modus gebaut** (`/gm/<Code>`, Startseite „Spielleiter-Modus öffnen“): Klang auf Zuruf (Stichworte → Klang, lokal im Browser, Sperrzeit, „nur vorschlagen“), Soundboard mit eigenen Klängen (IndexedDB), Stichworte editierbar, optional Handys mit Probe, Fund/Truhe, LP, Rast; Mitschnitt nur mit Einwilligungs-Häkchen, rote Hinweise auf allen Handys, ohne Mitschnitt kein Wortlaut im Protokoll. Anleitung `docs/SPIELLEITER.md`. 55 Tests grün, Browser-Durchlauf Spielleitung + Handy ohne Fehler.
+- **Wettbewerb (23.11.):** Effexiq (Browser, KI-Zuordnung, Preise geplant), Dungeon Cue (Windows, Stichworte, braucht Syrinscape, 4,99 $), Syrinscape (fertig vertonte Szenen). Unser Vorsprung: Deutsch, alles in einem System, Weg zum KI-Moderator und zu Editionen.
+- **Schutz:** `LICENSE` (alle Rechte vorbehalten; Inhabername eintragen), `docs/SCHUTZ.md`, Entwurf `docs/TESTTISCH-VEREINBARUNG.md` (vor fremden Tischen anwaltlich prüfen, GO).
+- **Stimme:** Optionen und Kosten in `docs/STIMME.md`. Gratis sofort: Chrome-Stimme „Google Deutsch“. Hörprobe gpt-4o-mini-tts / Gemini Flash TTS / ElevenLabs braucht Konto (GO).
+- **Testtische:** zuerst Shenanigans, dann Stadtbibliothek Köln (Ul, 23.11.); E-Mails „bei Gelegenheit“.
+
 ## Nachtrag 21.11., 16:30: Übernahme erledigt
 - Code liegt auf dem Mac in `~/Documents/tabula-gala`, `start.command` ausführbar, `.env` aus der Vorlage angelegt (Schlüssel leer). `start.command` meldet jetzt klar, wenn Node.js fehlt.
 - Vault gepflegt: Dateien 08–11 in `02_PROJEKTE/tischleiter/` (alter Handoff → `HANDOFF_2026-11-20.md`), Rückverweise, INDEX. Master2do #236–242.

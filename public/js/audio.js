@@ -10,7 +10,17 @@ export class AudioEngine {
     this.currentBed = null; // {id, gain, stop}
     this.ducked = false;
     this.volume = { bed: 1, sfx: 1 };
+    this.custom = new Map(); // 'sfx:id' | 'bed:id' -> AudioBuffer (eigene Klänge der Spielleitung)
   }
+
+  // Eigener Klang statt Datei/Platzhalter. data: ArrayBuffer einer Audiodatei, null = entfernen
+  async setCustom(kind, id, data) {
+    await this.init();
+    const key = `${kind}:${id}`;
+    if (!data) { this.custom.delete(key); return true; }
+    try { this.custom.set(key, await this.ctx.decodeAudioData(data.slice(0))); return true; } catch { return false; }
+  }
+  hasCustom(kind, id) { return this.custom.has(`${kind}:${id}`); }
 
   async init() {
     if (this.ctx) { if (this.ctx.state === 'suspended') await this.ctx.resume(); return; }
@@ -73,7 +83,8 @@ export class AudioEngine {
     gain.gain.value = 0;
     gain.connect(this.bedBus);
     const stops = [];
-    for (const path of [def.file, def.music]) {
+    const own = this.custom.get(`bed:${id}`);
+    for (const path of own ? [] : [def.file, def.music]) {
       const buf = await this.load(path);
       if (buf) {
         const src = this.ctx.createBufferSource();
@@ -81,6 +92,7 @@ export class AudioEngine {
         stops.push(() => src.stop());
       }
     }
+    if (own) { const src = this.ctx.createBufferSource(); src.buffer = own; src.loop = true; src.connect(gain); src.start(); stops.push(() => src.stop()); }
     if (!stops.length && def.synth) stops.push(synthBed(this.ctx, gain, def.synth));
     gain.gain.setTargetAtTime(def.volume, this.ctx.currentTime, 1.0);
     this.currentBed = { id, gain, stop: () => stops.forEach((s) => { try { s(); } catch {} }) };
@@ -93,7 +105,7 @@ export class AudioEngine {
     const gain = this.ctx.createGain();
     gain.gain.value = def.volume ?? 0.7;
     gain.connect(this.sfxBus);
-    const buf = await this.load(def.file);
+    const buf = this.custom.get(`sfx:${id}`) || await this.load(def.file);
     if (buf) {
       const src = this.ctx.createBufferSource();
       src.buffer = buf; src.connect(gain); src.start();

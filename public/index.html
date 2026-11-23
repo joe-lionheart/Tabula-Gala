@@ -16,22 +16,30 @@
       <h2>Neue Runde starten</h2>
       <p class="muted">Dieser Laptop wird der Tisch: Er hört zu, erzählt und spielt die Klänge. Die anderen treten mit dem Handy bei.</p>
       <label>Spieldauer in Minuten <input id="duration" type="number" value="90" min="30" max="300"></label>
-      <p><button class="primary big" id="create">Runde eröffnen</button></p>
+      <p><button class="primary big" id="create">Runde mit KI-Moderator</button></p>
+    </section>
+
+    <section class="card">
+      <h2>Du leitest selbst</h2>
+      <p class="muted">Spielleiter-Modus: Du erzählst wie immer, die App hört mit und spielt passende Klänge („die Glocke schlägt“ → Glocke). Dazu ein Soundboard mit eigenen Klängen. Würfel, Rucksack und Funde über die Handys gibt es auf Wunsch dazu. Für jedes Rollenspielsystem, ohne KI-Kosten.</p>
+      <p><button class="big" id="createGm">Spielleiter-Modus öffnen</button></p>
     </section>
 
     <section class="card">
       <h2>Mitspielen</h2>
       <div class="row"><input id="code" placeholder="Code, z. B. KXPA" maxlength="4" class="grow"><button id="join">Beitreten</button></div>
     </section>
-    <p class="muted" style="text-align:center;font-size:.8rem">Icons: game-icons.net (Lorc, Delapouite, Skoll), CC BY 3.0 · Klänge: Kenney.nl (CC0) und weitere, siehe docs/KLAENGE.md</p>
+    <p class="muted" style="text-align:center;font-size:.8rem">© 2026 Tabula Gala. Alle Rechte vorbehalten. · Icons: game-icons.net (Lorc, Delapouite, Skoll), CC BY 3.0 · Klänge: Kenney.nl (CC0) und weitere, siehe docs/KLAENGE.md</p>
   </main>
   <script type="module">
-    document.getElementById('create').onclick = async () => {
+    const open = async (mode) => {
       const durationMin = Number(document.getElementById('duration').value) || 90;
-      const r = await fetch('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ durationMin }) }).then((x) => x.json());
+      const r = await fetch('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ durationMin, mode }) }).then((x) => x.json());
       localStorage.setItem(`tg_host_${r.code}`, r.hostToken);
-      location.href = `/host/${r.code}`;
+      location.href = `/${mode === 'gm' ? 'gm' : 'host'}/${r.code}`;
     };
+    document.getElementById('create').onclick = () => open('ai');
+    document.getElementById('createGm').onclick = () => open('gm');
     document.getElementById('join').onclick = () => {
       const c = document.getElementById('code').value.trim().toUpperCase();
       if (c) location.href = `/join/${c}`;

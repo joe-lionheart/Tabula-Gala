@@ -99,6 +99,8 @@ function render() {
   app.querySelectorAll('input[id]:not([type=radio]),select[id]').forEach((el) => { saved[el.id] = el.value; });
   const focus = document.activeElement?.id;
   draw();
+  // Transparenz: Läuft ein Mitschnitt, sieht es jedes Handy
+  if (state.recording?.on) { const b = document.createElement('div'); b.id = 'recBanner'; b.textContent = '● Die Spielleitung schneidet mit (alle haben zugestimmt).'; app.prepend(b); }
   for (const [id, v] of Object.entries(saved)) { const el = document.getElementById(id); if (el && el.tagName === 'INPUT') el.value = v; }
   if (focus) document.getElementById(focus)?.focus();
 }
@@ -122,7 +124,7 @@ function renderCreation() {
     <section class="card">
       <input id="cname" placeholder="Name der Figur" maxlength="40" value="${esc(draft.name)}">
       <p><input id="concept" placeholder="In einem Satz: wer bist du? (z. B. „Diebin mit Herz“)" maxlength="140" value="${esc(draft.concept)}"></p>
-      <input id="kerbe" placeholder="Deine Schwäche (der Moderator nutzt sie)" maxlength="140" value="${esc(draft.kerbe)}">
+      <input id="kerbe" placeholder="Deine Schwäche (${s.mode === 'gm' ? 'die Spielleitung' : 'der Moderator'} nutzt sie)" maxlength="140" value="${esc(draft.kerbe)}">
     </section>
     <section class="card">
       <div class="row" style="justify-content:space-between"><h3>Werte</h3><span class="pill ${used === 12 ? 'on' : 'gold'}">${used} / 12 Punkte</span></div>
@@ -170,7 +172,7 @@ function renderWaiting() {
 // Was wollt ihr heute erleben? Der Moderator schreibt daraus das Abenteuer.
 function wishCard() {
   const g = state.adventureGen;
-  if (!g) return '';
+  if (!g || state.mode === 'gm') return '';
   const status = g.status === 'writing' ? '<p class="thinking">Der Moderator schreibt euer Abenteuer …</p>'
     : g.status === 'ready' ? `<p class="pill on">Heute: ${esc(g.title)}</p>` : `<p class="muted">Heute: ${esc(g.title)}</p>`;
   return `<section class="card">
@@ -215,8 +217,8 @@ function renderPlay() {
     </section>` : ''}
 
     ${charCard()}
-    <button class="speak ${speaking ? 'active' : ''}" id="speak">${speaking ? 'Du hast das Wort' : 'Ich spreche'}</button>
-    <p class="muted" style="text-align:center;margin:.3rem 0 .9rem">Kurz antippen, dann einfach reden. Nicht festhalten.</p>
+    ${s.mode === 'gm' ? '' : `<button class="speak ${speaking ? 'active' : ''}" id="speak">${speaking ? 'Du hast das Wort' : 'Ich spreche'}</button>
+    <p class="muted" style="text-align:center;margin:.3rem 0 .9rem">Kurz antippen, dann einfach reden. Nicht festhalten.</p>`}
 
     ${s.combat ? `<section class="card ${myCheck ? '' : 'alert'}">
       <h2>Kampf</h2>
@@ -258,7 +260,7 @@ function renderPlay() {
     </section>`;
 
   const feed = app.querySelector('.feed'); if (feed) feed.scrollTop = feed.scrollHeight;
-  $('#speak').onclick = () => { act('speak'); };
+  const sp = document.getElementById('speak'); if (sp) sp.onclick = () => { act('speak'); };
   $('#sayBtn').onclick = () => { const t = $('#say').value.trim(); if (t) { act('say', { text: t }); $('#say').value = ''; } };
   const wsel = $('#weapon'); if (wsel) wsel.onchange = (e) => { attackWeapon = e.target.value; };
 
