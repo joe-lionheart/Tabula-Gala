@@ -10,6 +10,7 @@ export const DEFAULT_TRIGGERS = [
   { bed: 'forest_day', words: ['wald', 'lichtung', 'waldweg'] },
   { bed: 'swamp_night', words: ['moor', 'sumpf', 'morast'] },
   { bed: 'chapel', words: ['kapelle', 'kirche', 'gruft', 'krypta', 'tempel'] },
+  { bed: 'dungeon', words: ['gewölbe', 'verlies', 'kerker', 'höhle', 'stollen'] },
   { bed: 'smithy', words: ['schmiede', 'esse'] },
   { bed: 'dawn_yard', words: ['morgengrauen', 'sonnenaufgang', 'morgendämmerung'] },
   { bed: 'combat', words: ['initiative', 'zum kampf', 'greift an', 'greifen an', 'angriff'] },

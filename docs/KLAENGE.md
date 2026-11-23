@@ -1,6 +1,6 @@
 # Klänge: herunterladen statt kaufen
 
-Stand: 21.11.2026. Grundsatz: nur **CC0** (frei, auch kommerziell, ohne Nennung) oder **CC BY** (frei mit Namensnennung). So bleibt alles auch im späteren Produkt nutzbar.
+Stand: 23.11.2026. Grundsatz: nur **CC0** (frei, auch kommerziell, ohne Nennung) oder **CC BY** (frei mit Namensnennung). So bleibt alles auch im späteren Produkt nutzbar.
 
 ## Ablegen
 
@@ -22,22 +22,29 @@ Datei herunterladen, umbenennen, nach `public/audio/…` legen. **Die Endung ist
 
 Quelle: https://kenney.nl/assets/rpg-audio (CC0). Nennung freiwillig: „Kenney.nl“.
 
-## Zum Herunterladen (Ul, ca. 15 Minuten)
+## Seit 23.11.2026 drin (CC0, OpenGameArt, alle nach .ogg umgewandelt)
 
-Alle Seiten auf OpenGameArt; dort jeweils die Datei unter „File(s)“ laden. Wo es eine **Loop-Fassung** gibt, die nehmen.
+| Datei im Spiel | Quelle | Urheber |
+|---|---|---|
+| `music/tavern.ogg` | „Medieval: The Old Tower Inn“, Loop_The_Old_Tower_Inn.wav | RandomMind |
+| `beds/swamp_night.ogg` | „Swamp Environment Audio“, swamp.ogg | LokiF |
+| `beds/chapel.ogg` | „Cathedral in the forest (ambient loop)“, forest_2.ogg | congusbongus |
+| `beds/dungeon.ogg` (neu: Gewölbe, Tropfen) | „Loopable Dungeon Ambience“, dungeon_ambient_1.ogg | JaggedStone |
+| `beds/combat.ogg` | „Medieval: Battle“, battle.mp3 | RandomMind |
+| `sfx/sword_swing` · `club_swing` · `punch_swing` · `miss` | RPG Sound Pack, battle/swing, swing3, swing2, swing2 | artisticdude |
+| `sfx/magic` · `heal` | RPG Sound Pack, battle/spell, magic1 | artisticdude |
+| `sfx/glass_clink` · `anvil` | RPG Sound Pack, inventory/bottle, metal-ringing | artisticdude |
+| `sfx/wolf_growl` · `enemy_grunt` · `enemy_shout` · `enemy_down` · `whisper` | RPG Sound Pack, NPC/wolfman, mnstr1, ogre1, giant3, shade1 | artisticdude |
 
-| Ablegen als | Stück | Lizenz | Link |
-|---|---|---|---|
-| `music/tavern` | RandomMind, „Medieval: The Old Tower Inn“ (Loop-Fassung) | CC0 | https://opengameart.org/content/medieval-the-old-tower-inn |
-| `music/tavern` (Alternative) | RandomMind, „Medieval: Minstrel Dance“ | CC0 | https://opengameart.org/content/medieval-minstrel-dance |
-| `beds/swamp_night` | LokiF, „Swamp Environment Audio“ (swamp.ogg) | CC0 | https://opengameart.org/content/swamp-environment-audio |
-| `beds/chapel` | congusbongus, „Cathedral in the forest (ambient loop)“ | CC0 | https://opengameart.org/content/cathedral-in-the-forest-ambient-loop |
-| `beds/chapel` (Alternative, Wassertropfen) | JaggedStone, „Loopable Dungeon Ambience“ | CC0 | https://opengameart.org/content/loopable-dungeon-ambience |
-| `beds/combat` | RandomMind, „Medieval: Battle“ | CC0 | https://opengameart.org/content/medieval-battle |
+Lizenz überall CC0 (Lizenzfeld auf OpenGameArt, geprüft 23.11.2026). artisticdude bittet um Nennung mit Link zu OpenGameArt, wenn möglich; RandomMind, LokiF, congusbongus und JaggedStone freiwillig im Abspann. Das RPG Sound Pack hat 95 Klänge; weitere (Schleim, Riese, Käfer, Schatten, Interface) können jederzeit auf Tasten gelegt werden.
 
-Für die restlichen Effekte (Schwung, Treffer, Schmerz, Zauber, Monster): **artisticdude, „RPG Sound Pack“** (eine ZIP-Datei; steht in CC0-Sammlungen, Lizenzfeld auf der Seite bitte kurz prüfen) https://opengameart.org/content/rpg-sound-pack. Die ZIP bitte ungeöffnet in den Vault oder ins Repo unter `assets-roh/` legen, dann ordne ich die Dateien zu.
+Erste Zuordnung nach Dateinamen, **noch nicht probegehört**: Was nicht passt, im GMSB mit „eigene Klänge zuordnen“ ersetzen oder mir sagen.
 
-Noch offen: `beds/tavern` (Stimmengewirr im Wirtshaus). Kandidaten: die Sonniss-Liste im Vault (`02_PROJEKTE/tischleiter/audio-sonniss-dateiliste.md`) oder Freesound mit Lizenzfilter CC0, Suche „tavern ambience“.
+## Noch offen (Platzhalter laufen)
+
+- `beds/tavern` (Stimmengewirr im Wirtshaus), `beds/smithy`, `beds/dawn_yard`, `beds/forest_day`
+- Effekte: `dice_roll`, `bow_shot`, `arrow_hit`, `punch_hit`, `player_hurt`, `player_down`, `crit_fanfare`, `fumble`, `success_chime`, `fail_low`, `pour`, `level_up`, `chair_scrape`, `laugh_crowd`, `wolf_howl`, `water_splash`, `bell`, `torch`, `crowd_gasp`
+- Kandidaten: Sonniss-Liste im Vault (`02_PROJEKTE/tischleiter/audio-sonniss-dateiliste.md`), Freesound mit Filter CC0 (braucht Konto), Kenney „Impact Sounds“ / „Interface Sounds“ (CC0).
 
 ## Nicht verwenden (Lizenz passt nicht zum Produkt)
 

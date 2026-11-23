@@ -7,6 +7,7 @@
     "chapel":       { "label": "Kapelle, Wasser, Fackeln", "file": "beds/chapel.ogg", "volume": 0.45, "synth": "drone" },
     "smithy":       { "label": "Schmiede: Esse und Feuer", "file": "beds/smithy.ogg", "volume": 0.45, "synth": "drone" },
     "dawn_yard":    { "label": "Morgengrauen am Wasser", "file": "beds/dawn_yard.ogg", "volume": 0.45, "synth": "swamp" },
+    "dungeon":      { "label": "Gewölbe, Tropfen", "file": "beds/dungeon.ogg", "volume": 0.45, "synth": "drone" },
     "combat":       { "label": "Kampf-Trommeln", "file": "beds/combat.ogg", "volume": 0.45, "synth": "drums" },
     "silence":      { "label": "Stille", "file": null, "volume": 0, "synth": null }
   },
