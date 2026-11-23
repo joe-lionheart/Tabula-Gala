@@ -12,6 +12,26 @@ let attackTarget = null;
 let attackWeapon = null;
 let busy = false;            // Doppeltipp-Schutz beim Würfeln
 let lastCheckId = null;
+
+// „Ich spreche“: Der Knopf wird bei jedem Neuzeichnen ersetzt (im KI-Modus oft pro Sekunde).
+// Ein normaler Klick ginge dann verloren. Darum zählt Finger-runter + Finger-hoch auf dem Knopf,
+// auch wenn er dazwischen neu gezeichnet wurde.
+let speakDown = null;
+function claimSpeak() {
+  const b = document.getElementById('speak');
+  if (b) { b.classList.add('active'); b.textContent = 'Du hast das Wort'; }
+  if (navigator.vibrate) navigator.vibrate(30);
+  act('speak');
+}
+app.addEventListener('pointerdown', (e) => { speakDown = e.target.closest?.('#speak') ? { x: e.clientX, y: e.clientY } : null; });
+app.addEventListener('pointerup', (e) => {
+  const d = speakDown; speakDown = null;
+  if (!d || !e.target.closest?.('#speak')) return;
+  if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 30) return;   // war Scrollen
+  claimSpeak();
+});
+app.addEventListener('pointercancel', () => { speakDown = null; });
+app.addEventListener('click', (e) => { if (e.detail === 0 && e.target.closest?.('#speak')) claimSpeak(); }); // Tastatur
 const seenLoot = new Set();     // um neuen Loot kurz aufleuchten zu lassen
 
 // ---------- Signal: Vibration, Ton (iPhone kann nicht vibrieren), Aufleuchten ----------
@@ -260,7 +280,6 @@ function renderPlay() {
     </section>`;
 
   const feed = app.querySelector('.feed'); if (feed) feed.scrollTop = feed.scrollHeight;
-  const sp = document.getElementById('speak'); if (sp) sp.onclick = () => { act('speak'); };
   $('#sayBtn').onclick = () => { const t = $('#say').value.trim(); if (t) { act('say', { text: t }); $('#say').value = ''; } };
   const wsel = $('#weapon'); if (wsel) wsel.onchange = (e) => { attackWeapon = e.target.value; };
 

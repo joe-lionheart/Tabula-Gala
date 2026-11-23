@@ -1,4 +1,4 @@
-// Spielleiter-Modus: Ein Mensch leitet. Die App liefert Klang (Taste oder Stichwort) und auf Wunsch die Mechanik.
+// GMSB (Gamemaster Soundboard): Ein Mensch leitet. Die App liefert Klang (Taste oder Stichwort) und auf Wunsch die Mechanik.
 import { connect, $, esc, toast } from './net.js';
 import { AudioEngine } from './audio.js';
 import { TableMic } from './voice.js';

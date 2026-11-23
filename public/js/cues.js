@@ -1,4 +1,4 @@
-// Klang auf Zuruf (Spielleiter-Modus): erkennt Stichworte in dem, was die Spielleitung sagt,
+// Klang auf Zuruf (GMSB (Gamemaster Soundboard)): erkennt Stichworte in dem, was die Spielleitung sagt,
 // und schlägt passende Klänge vor. Läuft komplett im Browser, ohne KI und ohne Server.
 // Reines Modul ohne DOM, damit es auch in Node getestet werden kann.
 

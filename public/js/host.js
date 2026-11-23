@@ -11,19 +11,24 @@ let lastJson = '';
 let state = null;
 let thinkingTimer = null;
 
+// Server erfährt, wann die Erzählstimme spricht: Ein „Ich spreche“ in dieser Zeit verfällt nicht
+const narrating = (on) => { try { net?.send('narrating', { on }); } catch { /* ohne Verbindung egal */ } };
 const narrator = new Narrator({
-  onStart: () => { audio.duck(true); mic.pause(true); },
-  onEnd: () => { audio.duck(false); mic.pause(false); },
+  onStart: () => { audio.duck(true); mic.pause(true); narrating(true); },
+  onEnd: () => { audio.duck(false); mic.pause(false); narrating(false); },
 });
 const mic = new TableMic({
-  onFinal: (text) => { if (text) net.send('utterance', { text }); $('#interim').textContent = ''; },
+  onFinal: (text, startedAt) => {
+    if (text) net.send('utterance', { text, ...(startedAt ? { startedMsAgo: Math.max(0, Date.now() - startedAt) } : {}) });
+    $('#interim').textContent = '';
+  },
   onInterim: (t) => { $('#interim').textContent = t; },
   onState: (s) => { $('#micState').textContent = s; $('#btnMic').textContent = `Tisch hört zu: ${mic.wanted ? 'an' : 'aus'}`; },
 });
 
 const FILLERS = ['Hm.', 'Mal sehen …', 'Einen Augenblick.', 'Soso.'];
 
-const net = connect({
+var net = connect({
   code, token,
   onStatus: (s, err) => { $('#net').textContent = s; $('#net').className = `pill ${s === 'online' ? 'on' : 'off'}`; if (err) toast(err, 'error'); },
   onState: (s) => { const j = JSON.stringify(s); if (j === lastJson) return; lastJson = j; state = s; render(); },

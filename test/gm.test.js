@@ -18,7 +18,7 @@ function gmGame() {
   return { g, a: a.playerId, logs, msgs };
 }
 
-test('Spielleiter-Modus: keine KI, freie Szene, keine Erzählstimme, kein Szenenklang', () => {
+test('GMSB: keine KI, freie Szene, keine Erzählstimme, kein Szenenklang', () => {
   const { g, msgs } = gmGame();
   assert.equal(g.state.mode, 'gm');
   assert.equal(g.state.ai.enabled, false);

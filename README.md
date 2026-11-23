@@ -2,6 +2,8 @@
 
 Das Hörspiel, in dem ihr mitspielt. Ein KI-Moderator erzählt, führt die Nebenfiguren und spielt Klänge ein. Die Runde sitzt am Tisch, redet einfach und würfelt am Handy.
 
+Daneben gibt es eine eigenständige zweite Version ohne KI: **GMSB · Gamemaster Soundboard** (siehe unten).
+
 Interner Projektname: Tischleiter. Regeln: Kernmechanik v0.5 (Projektwissen, Datei 06).
 
 ## So läuft ein Abend
@@ -18,9 +20,9 @@ Interner Projektname: Tischleiter. Regeln: Kernmechanik v0.5 (Projektwissen, Dat
 8. Händler: einfach verhandeln, gute Argumente senken den Preis. Bezahlt wird mit Silber aus dem Rucksack.
 9. Loot und Truhen erscheinen auf allen Handys. Wer zuerst tippt und Platz hat, bekommt es.
 
-## Spielleiter-Modus (neu, 23.11.2026)
+## GMSB · Gamemaster Soundboard (eigene Version, seit 23.11.2026)
 
-Ein Mensch leitet wie immer, in jedem System. Die App hört mit und spielt passende Klänge auf Stichwort („die Glocke schlägt“ → Glocke), dazu ein Soundboard mit eigenen Klängen und auf Wunsch Würfel, Rucksack und Funde über die Handys. Ohne KI, ohne API-Kosten. Start: Startseite → „Spielleiter-Modus öffnen“. Anleitung: [`docs/SPIELLEITER.md`](docs/SPIELLEITER.md). Mitschnitt nur mit Einwilligung aller am Tisch.
+Klar getrennt von Tabula Gala: Ein Mensch leitet wie immer, in jedem System. Die App hört mit und spielt passende Klänge auf Stichwort („die Glocke schlägt“ → Glocke), dazu ein Soundboard mit eigenen Klängen und auf Wunsch Würfel, Rucksack und Funde über die Handys. Ohne KI, ohne API-Kosten. Start: Startseite → „GMSB öffnen“. Anleitung und Abgrenzung: [`docs/GMSB.md`](docs/GMSB.md). Mitschnitt nur mit Einwilligung aller am Tisch.
 
 ## Starten (Host-Laptop)
 

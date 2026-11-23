@@ -1,10 +1,20 @@
-# Spielleiter-Modus
+# GMSB · Gamemaster Soundboard
 
-Ein Mensch leitet wie immer, in jedem Rollenspielsystem. Die App liefert den Klang und auf Wunsch die Mechanik über die Handys. Keine KI, keine API-Kosten.
+Eigenständige Version neben Tabula Gala (Entscheidung Ul, 23.11.2026):
+
+| | **GMSB** · Gamemaster Soundboard | **Tabula Gala** |
+|---|---|---|
+| Wer leitet | ein Mensch, in jedem Rollenspielsystem | der KI-Moderator |
+| Kern | Echtzeit-Klang: Stichworte → Klang, Soundboard, eigene Klänge | Erzählung, Nebenfiguren, Regeln, Abenteuer auf Zuruf |
+| Handys | optional (Probe, Fund/Truhe, LP, Rast) | Pflicht (Figur, Würfel, Rucksack, „Ich spreche“) |
+| Kosten pro Abend | keine (keine KI) | API-Kosten (ca. 0,70 $) |
+| Rolle | Einstieg in die Community, Daten für den KI-Moderator (nur mit Einwilligung) | Hauptprodukt |
+
+Technisch teilen sich beide Code, Server und Klangbibliothek; der GMSB läuft unter `/gm/<Code>`.
 
 ## Starten
 1. `start.command` doppelklicken, Chrome öffnet `http://localhost:3000`.
-2. **„Spielleiter-Modus öffnen“** wählen.
+2. **„GMSB öffnen“** wählen.
 3. **„Ton einschalten“** antippen (Browser-Regel: Ton erst nach einem Klick).
 
 ## Klang auf Zuruf

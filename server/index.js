@@ -199,7 +199,8 @@ function handle(g, viewer, host, m) {
     end: () => g.endGame(),
     rest: () => g.rest(),
     continue: () => g.continueAct(),
-    utterance: () => g.utterance({ text: p.text, speakerId: p.speakerId, source: p.source || 'mic' }),
+    utterance: () => g.utterance({ text: p.text, speakerId: p.speakerId, source: p.source || 'mic', startedAt: Number.isFinite(Number(p.startedMsAgo)) ? Date.now() - Number(p.startedMsAgo) : undefined }),
+    narrating: () => g.setNarrating(p.on),
     ai: () => g.setAi(p.enabled),
     sfx: () => g.hostSfx(p.id),
     bed: () => g.hostBed(p.id),
@@ -213,7 +214,7 @@ function handle(g, viewer, host, m) {
     write: () => { g.writeAdventure(createAuthor(), world); return { ok: true }; },
     useTest: () => g.useTestAdventure(world),
     riddle: () => g.startRiddle(p.id),
-    // Spielleiter-Modus
+    // GMSB (Gamemaster Soundboard)
     gmCue: () => g.gmCue(p),
     gmSpeech: () => g.gmSpeech(p),
     recording: () => g.setRecording(Boolean(p.on), { consent: p.consent === true, note: p.note }),

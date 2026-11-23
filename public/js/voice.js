@@ -58,16 +58,20 @@ export class TableMic {
     this.rec.lang = 'de-DE';
     this.rec.continuous = true;
     this.rec.interimResults = true;
+    // Satzbeginn merken: Wer zu Beginn das Wort hatte, hat gesprochen, auch wenn der Satz länger dauert
+    this.segStart = null;
     this.rec.onresult = (ev) => {
       let interim = '';
+      if (this.segStart === null) this.segStart = Date.now() - 600; // Erkennung meldet sich leicht verzögert
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
         const r = ev.results[i];
-        if (r.isFinal) this.onFinal?.(r[0].transcript.trim());
+        if (r.isFinal) { this.onFinal?.(r[0].transcript.trim(), this.segStart); this.segStart = null; }
         else interim += r[0].transcript;
       }
+      if (interim && this.segStart === null) this.segStart = Date.now() - 600;
       this.onInterim?.(interim);
     };
-    this.rec.onend = () => { this.running = false; this.onState?.(this.state()); if (this.wanted && !this.paused) setTimeout(() => this.start(), 250); };
+    this.rec.onend = () => { this.running = false; this.segStart = null; this.onState?.(this.state()); if (this.wanted && !this.paused) setTimeout(() => this.start(), 250); };
     // Fehler sichtbar machen statt verschlucken (z. B. Safari ohne Siri/Diktat: service-not-allowed)
     const errText = { 'not-allowed': 'verweigert (Mikro-Erlaubnis im Browser prüfen)', 'service-not-allowed': 'Spracherkennung gesperrt (Chrome nutzen oder Diktieren am Mac einschalten)', 'audio-capture': 'kein Mikro gefunden', network: 'Spracherkennung offline (Internet nötig)' };
     this.rec.onerror = (e) => {

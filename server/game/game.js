@@ -11,7 +11,9 @@ import { validateJudgment } from '../llm/contract.js';
 import { systemPrompt, contextMessage } from '../llm/prompt.js';
 import { RIDDLE, rateAnswer, scoreArgument, priceFor, ARGUMENT_LABELS } from '../engine/social.js';
 
-const SPEAKER_WINDOW_MS = 12000;   // so lange gilt ein Antippen „Ich spreche“
+const SPEAKER_WINDOW_MS = 12000;   // so lange gilt ein Antippen „Ich spreche“ (ab dem Moment, in dem der Tisch zuhört)
+const SPEAKER_FOLLOW_MS = 8000;    // nach jedem zugeordneten Satz bleibt das Wort noch so lange
+const SPEECH_START_MAX_AGE_MS = 60000; // älter darf ein gemeldeter Sprechbeginn nicht sein
 const QUIET_MS = 1400;             // Pause, nach der der Moderator antwortet
 const FEED_MAX = 60;
 
@@ -21,7 +23,7 @@ const roman = (n) => ['', 'I', 'II', 'III', 'IV', 'V'][n] || String(n);
 export class Game {
   constructor({ code, world, moderator, durationMin = 90, mode = 'ai', rng = cryptoRng(), persist = () => {}, log = () => {} }) {
     this.code = code;
-    // Spielleiter-Modus: ein Mensch leitet, die App liefert Klang und auf Wunsch die Mechanik (Würfel, Rucksack, Loot)
+    // GMSB (Gamemaster Soundboard): ein Mensch leitet, die App liefert Klang und auf Wunsch die Mechanik (Würfel, Rucksack, Loot)
     if (mode === 'gm') world = gmWorld(world);
     this.world = world;
     this.moderator = moderator;
@@ -63,6 +65,8 @@ export class Game {
     this.customWorld = mode === 'gm';
     this.quietTimer = null;
     this.actTimer = null;
+    this.speakerTimer = null;
+    this.narrating = false;           // Host-Stimme spricht gerade, das Tischmikro ist stumm
     this.autoContinue = true;
     this.dirty = false;
   }
@@ -379,25 +383,61 @@ export class Game {
   }
 
   // ---------- Sprache am Tisch ----------
+  // Antippen gibt das Wort. Spricht der Moderator gerade, läuft die Uhr erst danach (das Mikro ist dann stumm).
   claimSpeaker(playerId) {
+    if (!this.charOf(playerId)) return { ok: false, error: 'Erst eine Figur erstellen' };
     this.state.activeSpeaker = { playerId, until: Date.now() + SPEAKER_WINDOW_MS };
+    this.armSpeakerExpiry();
     this.emit({ type: 'state' });
     return { ok: true };
   }
 
-  resolveSpeaker(explicitId) {
-    if (explicitId && this.charOf(explicitId)) return explicitId;
+  // Host meldet: Erzählstimme an/aus. Danach bekommt ein wartendes „Ich spreche“ volle Zeit.
+  setNarrating(on) {
+    this.narrating = Boolean(on);
     const a = this.state.activeSpeaker;
-    if (a && a.until > Date.now() && this.charOf(a.playerId)) return a.playerId;
+    if (!this.narrating && a && a.until > Date.now()) {
+      a.until = Math.max(a.until, Date.now() + SPEAKER_WINDOW_MS);
+      this.armSpeakerExpiry();
+    }
+    return { ok: true };
+  }
+
+  // Läuft das Wort ab, sollen Handys und Host das auch sehen
+  armSpeakerExpiry() {
+    clearTimeout(this.speakerTimer);
+    const a = this.state.activeSpeaker;
+    if (!a) return;
+    this.speakerTimer = setTimeout(() => {
+      const cur = this.state.activeSpeaker;
+      if (!cur) return;
+      if (this.narrating) { cur.until = Date.now() + SPEAKER_WINDOW_MS; return this.armSpeakerExpiry(); }
+      if (cur.until <= Date.now()) { this.state.activeSpeaker = null; this.emit({ type: 'state' }); }
+      else this.armSpeakerExpiry();
+    }, Math.max(50, a.until - Date.now() + 20));
+    this.speakerTimer.unref?.();
+  }
+
+  // at = Zeitpunkt, an dem der Satz begann (vom Host-Mikro). Wer zu Satzbeginn das Wort hatte, hat gesprochen.
+  resolveSpeaker(explicitId, at) {
+    if (explicitId && this.charOf(explicitId)) return explicitId;
+    const now = Date.now();
+    const t = Number.isFinite(at) ? Math.min(now, Math.max(now - SPEECH_START_MAX_AGE_MS, at)) : now;
+    const a = this.state.activeSpeaker;
+    if (a && (a.until > t || this.narrating) && this.charOf(a.playerId)) {
+      a.until = Math.max(a.until, now + SPEAKER_FOLLOW_MS);   // Folgesätze gehören noch dazu
+      this.armSpeakerExpiry();
+      return a.playerId;
+    }
     if (this.characters.length === 1) return this.characters[0].playerId;
     return 'unklar';
   }
 
   // Ein gesprochener oder getippter Beitrag vom Tisch
-  utterance({ text, speakerId, source = 'mic' }) {
+  utterance({ text, speakerId, source = 'mic', startedAt }) {
     const t = String(text || '').trim().slice(0, 500);
     if (!t || this.state.phase !== 'playing') return { ok: false };
-    const id = this.resolveSpeaker(speakerId);
+    const id = this.resolveSpeaker(speakerId, Number(startedAt));
     const ch = this.charOf(id);
     const entry = { ts: Date.now(), speakerId: id, speakerName: ch ? ch.name : 'unklar', text: t, source };
     this.state.transcript.push(entry);
@@ -415,7 +455,7 @@ export class Game {
   }
 
   setAi(enabled) {
-    if (this.isGm) return { ok: false, error: 'Im Spielleiter-Modus leitet ein Mensch' };
+    if (this.isGm) return { ok: false, error: 'Im GMSB leitet ein Mensch' };
     this.state.ai.enabled = Boolean(enabled); this.changed(); return { ok: true };
   }
 
@@ -859,7 +899,7 @@ export class Game {
   }
 
   // ---------- Host-Eingriffe ----------
-  // ---------- Spielleiter-Modus ----------
+  // ---------- GMSB (Gamemaster Soundboard) ----------
   // Ein Klang, den die Spielleitung ausgelöst hat (Taste oder Stichwort). Ohne Mitschnitt nur, welcher Klang, kein Wortlaut.
   gmCue({ kind, id, source = 'button', word } = {}) {
     const known = kind === 'bed' ? sound.knownBed(id) : sound.knownSfx(id);
@@ -977,7 +1017,7 @@ export class Game {
   }
 }
 
-// Welt für den Spielleiter-Modus: eine freie Szene ohne Vorgaben; Kataloge (Gegenstände, Gegner) bleiben nutzbar
+// Welt für den GMSB (Gamemaster Soundboard): eine freie Szene ohne Vorgaben; Kataloge (Gegenstände, Gegner) bleiben nutzbar
 export function gmWorld(base) {
   return {
     ...base,

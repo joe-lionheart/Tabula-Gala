@@ -184,3 +184,41 @@ test('Kampfbeginn lässt alle Handys vibrieren', async () => {
   g.startCombat(['wegelagerer']);
   assert.ok(events.some((e) => e.type === 'buzz' && e.all && e.kind === 'combat'));
 });
+
+test('Sprecher: Antippen während der Moderator spricht verfällt nicht', () => {
+  const { g, a } = setup();
+  g.setNarrating(true);
+  g.claimSpeaker(a.playerId);
+  g.state.activeSpeaker.until = Date.now() - 1;    // Zeitfenster wäre ohne Erzählstimme abgelaufen
+  g.setNarrating(false);
+  g.state.activeSpeaker.until = Date.now() + 5000; // nach der Erzählung gibt es wieder volle Zeit
+  g.utterance({ text: 'Ich frage den Wirt nach Lene' });
+  clearTimeout(g.quietTimer);
+  assert.equal(g.state.transcript.at(-1).speakerName, 'Mira');
+});
+
+test('Sprecher: zählt der Satzbeginn, nicht das Satzende; Folgesätze gehören dazu', () => {
+  const { g, a } = setup();
+  g.claimSpeaker(a.playerId);
+  const claimedAt = Date.now();
+  g.state.activeSpeaker.until = claimedAt - 100;          // Fenster beim Satzende schon vorbei …
+  g.utterance({ text: 'Ich klettere auf das Dach', startedAt: claimedAt - 2000 }); // … aber Satz begann drin
+  clearTimeout(g.quietTimer);
+  assert.equal(g.state.transcript.at(-1).speakerName, 'Mira');
+  assert.ok(g.state.activeSpeaker.until > Date.now());   // verlängert für den nächsten Satz
+  g.utterance({ text: 'und schaue in den Hof' });
+  clearTimeout(g.quietTimer);
+  assert.equal(g.state.transcript.at(-1).speakerName, 'Mira');
+  clearTimeout(g.speakerTimer);
+});
+
+test('Sprecher: abgelaufenes Wort wird an alle gemeldet', async () => {
+  const { g, a, events } = setup();
+  g.claimSpeaker(a.playerId);
+  g.state.activeSpeaker.until = Date.now() + 30;
+  g.armSpeakerExpiry();
+  const before = events.length;
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(g.state.activeSpeaker, null);
+  assert.ok(events.slice(before).some((e) => e.type === 'state'));
+});
