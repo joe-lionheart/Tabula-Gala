@@ -55,6 +55,11 @@ input, select, textarea { background: #0c111b; border: 1px solid var(--line); bo
 
 .speak { font-size: 1.4rem; padding: 1.3rem; width: 100%; border-radius: 18px; background: #12321f; border-color: var(--green); }
 .speak.active { background: var(--green); color: #07160d; }
+#speakBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; padding: .6rem 1rem calc(.6rem + env(safe-area-inset-bottom)); background: rgba(10, 14, 12, .96); border-top: 1px solid #234; }
+#speakBar .speak { max-width: 720px; display: block; margin: 0 auto; touch-action: manipulation; }
+#speakBar p { text-align: center; margin: .35rem 0 0; font-size: .85rem; }
+#speakBar p.warn { color: var(--red); }
+body.with-speakbar { padding-bottom: 9rem; }
 
 .dice { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4rem; }
 .dice button { padding: .7rem 0; font-size: 1.1rem; }

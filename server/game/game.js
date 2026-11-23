@@ -53,6 +53,7 @@ export class Game {
       feed: [],                   // {ts, who, text, kind}
       transcript: [],             // {ts, speakerId, speakerName, text, source}
       activeSpeaker: null,        // {playerId, until}
+      tableMic: 'off',            // Laptop-Mikro: on | paused | off (meldet der Host)
       ai: { enabled: mode !== 'gm', kind: moderator.kind, model: moderator.model, busy: false, tokensIn: 0, tokensOut: 0, calls: 0, lastLatencyMs: null, lastError: null },
       milestonesOpen: [],
       riddle: null,               // {id, sceneId, attempts, hintGiven}
@@ -81,6 +82,7 @@ export class Game {
     g.state.ai = { ...fresh, ...snap.state.ai, kind: fresh.kind, model: fresh.model, busy: false, lastError: null };
     for (const p of g.state.players) { p.connected = false; p.sockets = 0; }
     g.state.activeSpeaker = null;
+    g.state.tableMic = 'off';
     if (g.state.phase === 'playing') {
       g.state.paused = true;
       g.feed('Tisch', 'Der Tisch war kurz weg und ist wieder da. Host: „Weiter“ drücken.', 'system');
@@ -387,6 +389,7 @@ export class Game {
   claimSpeaker(playerId) {
     if (!this.charOf(playerId)) return { ok: false, error: 'Erst eine Figur erstellen' };
     this.state.activeSpeaker = { playerId, until: Date.now() + SPEAKER_WINDOW_MS };
+    this.log('speak', { playerId, tableMic: this.state.tableMic, narrating: this.narrating });
     this.armSpeakerExpiry();
     this.emit({ type: 'state' });
     return { ok: true };
@@ -400,6 +403,13 @@ export class Game {
       a.until = Math.max(a.until, Date.now() + SPEAKER_WINDOW_MS);
       this.armSpeakerExpiry();
     }
+    return { ok: true };
+  }
+
+  // Host meldet, ob das Laptop-Mikro zuhört; die Handys zeigen sonst einen Hinweis
+  setTableMic(mic) {
+    const v = ['on', 'paused', 'off'].includes(mic) ? mic : 'off';
+    if (this.state.tableMic !== v) { this.state.tableMic = v; this.log('table_mic', { mic: v }); this.emit({ type: 'state' }); }
     return { ok: true };
   }
 
@@ -999,6 +1009,7 @@ export class Game {
       silver: me ? this.silverOf(me) : null,
       chests: isHost && scene ? (scene.chests || []).map((c) => ({ id: c.id, label: c.label, opened: s.openedChests.includes(c.id) })) : undefined,
       activeSpeaker: s.activeSpeaker && s.activeSpeaker.until > Date.now() ? s.activeSpeaker.playerId : null,
+      tableMic: s.tableMic || 'off',
       feed: s.feed.slice(-30),
       milestoneOpen: !isHost && s.milestonesOpen.includes(viewer),
       milestonesPending: s.milestonesOpen.length,

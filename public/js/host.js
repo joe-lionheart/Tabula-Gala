@@ -23,14 +23,22 @@ const mic = new TableMic({
     $('#interim').textContent = '';
   },
   onInterim: (t) => { $('#interim').textContent = t; },
-  onState: (s) => { $('#micState').textContent = s; $('#btnMic').textContent = `Tisch hört zu: ${mic.wanted ? 'an' : 'aus'}`; },
+  onState: (s) => { $('#micState').textContent = s; $('#btnMic').textContent = `Tisch hört zu: ${mic.wanted ? 'an' : 'aus'}`; reportMic(); },
 });
+
+// Den Handys mitteilen, ob der Laptop zuhört (sonst wundert man sich, warum „Ich spreche“ nichts bewirkt)
+let lastMic = null;
+function reportMic() {
+  const v = !mic?.supported || !mic.wanted ? 'off' : mic.paused ? 'paused' : 'on';
+  if (v === lastMic || !net) return;
+  lastMic = v; net.send('tableMic', { mic: v });
+}
 
 const FILLERS = ['Hm.', 'Mal sehen …', 'Einen Augenblick.', 'Soso.'];
 
 var net = connect({
   code, token,
-  onStatus: (s, err) => { $('#net').textContent = s; $('#net').className = `pill ${s === 'online' ? 'on' : 'off'}`; if (err) toast(err, 'error'); },
+  onStatus: (s, err) => { if (s === 'online') { lastMic = null; setTimeout(reportMic, 100); } $('#net').textContent = s; $('#net').className = `pill ${s === 'online' ? 'on' : 'off'}`; if (err) toast(err, 'error'); },
   onState: (s) => { const j = JSON.stringify(s); if (j === lastJson) return; lastJson = j; state = s; render(); },
   onMessage: (m) => {
     if (m.type === 'say') narrator.say(m.text, m.voice);

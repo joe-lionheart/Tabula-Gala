@@ -13,25 +13,38 @@ let attackWeapon = null;
 let busy = false;            // Doppeltipp-Schutz beim Würfeln
 let lastCheckId = null;
 
-// „Ich spreche“: Der Knopf wird bei jedem Neuzeichnen ersetzt (im KI-Modus oft pro Sekunde).
-// Ein normaler Klick ginge dann verloren. Darum zählt Finger-runter + Finger-hoch auf dem Knopf,
-// auch wenn er dazwischen neu gezeichnet wurde.
-let speakDown = null;
-function claimSpeak() {
-  const b = document.getElementById('speak');
-  if (b) { b.classList.add('active'); b.textContent = 'Du hast das Wort'; }
+// „Ich spreche“ sitzt fest am unteren Rand, AUSSERHALB von #app. So wird der Knopf beim Neuzeichnen
+// (im KI-Modus ständig) nie ersetzt, und ein Tipp geht auch auf Touch-Bildschirmen nicht verloren.
+const speakBar = document.createElement('div');
+speakBar.id = 'speakBar'; speakBar.className = 'hidden';
+speakBar.innerHTML = '<button class="speak" id="speak" type="button">Ich spreche</button><p id="speakHint" class="muted"></p>';
+document.body.append(speakBar);
+const speakBtn = speakBar.querySelector('#speak');
+let speakPending = 0;
+speakBtn.addEventListener('click', () => {
+  speakPending = Date.now();
+  speakBtn.classList.add('active'); speakBtn.textContent = 'Du hast das Wort';
   if (navigator.vibrate) navigator.vibrate(30);
-  act('speak');
-}
-app.addEventListener('pointerdown', (e) => { speakDown = e.target.closest?.('#speak') ? { x: e.clientX, y: e.clientY } : null; });
-app.addEventListener('pointerup', (e) => {
-  const d = speakDown; speakDown = null;
-  if (!d || !e.target.closest?.('#speak')) return;
-  if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 30) return;   // war Scrollen
-  claimSpeak();
+  act('speak').then((r) => { if (!r.ok) { speakPending = 0; updateSpeakBar(); } });
 });
-app.addEventListener('pointercancel', () => { speakDown = null; });
-app.addEventListener('click', (e) => { if (e.detail === 0 && e.target.closest?.('#speak')) claimSpeak(); }); // Tastatur
+const MIC_HINT = {
+  on: 'Kurz antippen, dann einfach reden. Der Laptop hört zu.',
+  paused: 'Der Moderator spricht. Tippen geht trotzdem, du bist danach dran.',
+  off: '⚠ Der Laptop hört gerade nicht zu. Am Laptop in Chrome „Tisch hört zu: an“ drücken, sonst unten tippen.',
+};
+function updateSpeakBar() {
+  const s = state;
+  const show = Boolean(s && s.phase === 'playing' && s.mode !== 'gm' && s.me?.character);
+  speakBar.classList.toggle('hidden', !show);
+  document.body.classList.toggle('with-speakbar', show);
+  if (!show) return;
+  const mine = s.activeSpeaker === s.me.character.playerId || (speakPending && Date.now() - speakPending < 1500);
+  speakBtn.classList.toggle('active', Boolean(mine));
+  speakBtn.textContent = mine ? 'Du hast das Wort' : 'Ich spreche';
+  const hint = speakBar.querySelector('#speakHint');
+  hint.textContent = MIC_HINT[s.tableMic] || MIC_HINT.off;
+  hint.classList.toggle('warn', (s.tableMic || 'off') === 'off');
+}
 const seenLoot = new Set();     // um neuen Loot kurz aufleuchten zu lassen
 
 // ---------- Signal: Vibration, Ton (iPhone kann nicht vibrieren), Aufleuchten ----------
@@ -119,6 +132,7 @@ function render() {
   app.querySelectorAll('input[id]:not([type=radio]),select[id]').forEach((el) => { saved[el.id] = el.value; });
   const focus = document.activeElement?.id;
   draw();
+  updateSpeakBar();
   // Transparenz: Läuft ein Mitschnitt, sieht es jedes Handy
   if (state.recording?.on) { const b = document.createElement('div'); b.id = 'recBanner'; b.textContent = '● Die Spielleitung schneidet mit (alle haben zugestimmt).'; app.prepend(b); }
   for (const [id, v] of Object.entries(saved)) { const el = document.getElementById(id); if (el && el.tagName === 'INPUT') el.value = v; }
@@ -224,7 +238,6 @@ function renderPlay() {
   const s = state;
   const myId = s.me.character.playerId;
   const myCheck = s.pendingCheck && s.pendingCheck.playerId === myId ? s.pendingCheck : null;
-  const speaking = s.activeSpeaker === myId;
   const inv = s.me.inventory;
   const weapons = inv.items.filter((i) => info(i.itemId).weapon).sort((x, y) => (y.inHand ? 1 : 0) - (x.inHand ? 1 : 0));
   const ammoLeft = (w) => { const a = info(w.itemId).ammo; return a ? inv.items.filter((i) => i.itemId === a).reduce((n, i) => n + i.qty, 0) : null; };
@@ -237,8 +250,6 @@ function renderPlay() {
     </section>` : ''}
 
     ${charCard()}
-    ${s.mode === 'gm' ? '' : `<button class="speak ${speaking ? 'active' : ''}" id="speak">${speaking ? 'Du hast das Wort' : 'Ich spreche'}</button>
-    <p class="muted" style="text-align:center;margin:.3rem 0 .9rem">Kurz antippen, dann einfach reden. Nicht festhalten.</p>`}
 
     ${s.combat ? `<section class="card ${myCheck ? '' : 'alert'}">
       <h2>Kampf</h2>

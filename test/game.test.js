@@ -222,3 +222,12 @@ test('Sprecher: abgelaufenes Wort wird an alle gemeldet', async () => {
   assert.equal(g.state.activeSpeaker, null);
   assert.ok(events.slice(before).some((e) => e.type === 'state'));
 });
+
+test('Tischmikro: Host meldet Zustand, Handys sehen ihn', () => {
+  const { g, a } = setup();
+  assert.equal(g.view(a.playerId).tableMic, 'off');
+  g.setTableMic('on');
+  assert.equal(g.view(a.playerId).tableMic, 'on');
+  g.setTableMic('quatsch');
+  assert.equal(g.state.tableMic, 'off');
+});

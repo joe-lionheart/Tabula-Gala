@@ -201,6 +201,7 @@ function handle(g, viewer, host, m) {
     continue: () => g.continueAct(),
     utterance: () => g.utterance({ text: p.text, speakerId: p.speakerId, source: p.source || 'mic', startedAt: Number.isFinite(Number(p.startedMsAgo)) ? Date.now() - Number(p.startedMsAgo) : undefined }),
     narrating: () => g.setNarrating(p.on),
+    tableMic: () => g.setTableMic(p.mic),
     ai: () => g.setAi(p.enabled),
     sfx: () => g.hostSfx(p.id),
     bed: () => g.hostBed(p.id),
